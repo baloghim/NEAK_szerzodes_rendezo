@@ -136,3 +136,13 @@ def test_full_tab_and_panel_titles(window,app):
         assert rect.width()>=window.tabs.tabBar().fontMetrics().horizontalAdvance(window.tabs.tabText(index))+20
     for panel in window.findChildren(W.QGroupBox):
         assert panel.minimumWidth()>=panel.fontMetrics().horizontalAdvance(panel.title())+20
+
+
+def test_late_ocr_does_not_override_manual_rotation(window,tmp_path,monkeypatch):
+    source=tmp_path/'source.pdf';make_pdf(source)
+    monkeypatch.setattr(window,'start_next',lambda:None)
+    window.add_files([str(source)])
+    window.scan_preview.rotate(90)
+    window.recognized(str(source),Contract('T123','Szintetikus','Szintetikus','IX-3','20260201'),'',
+                      {'rotations':{0:270},'manual':{}})
+    assert window.scan_preview.rotation_map()[0]==90

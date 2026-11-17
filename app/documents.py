@@ -90,6 +90,7 @@ def recognize(path, auto_orient=True, detailed=False, initial_rotations=None):
         count = len(document)
     try:
         for index in range(count):
+            embedded = ''
             try:
                 with PDF_LOCK:
                     page = document[index]
@@ -119,7 +120,7 @@ def recognize(path, auto_orient=True, detailed=False, initial_rotations=None):
                     result.warnings.append(f'{index+1}. oldal: {warning}')
             except Exception as error:
                 # Other pages and their valid fields remain available for correction.
-                pages.append('')
+                pages.append(embedded)
                 result.warnings.append(f'{index+1}. oldal feldolgozási hibája: {error}')
     finally:
         with PDF_LOCK:

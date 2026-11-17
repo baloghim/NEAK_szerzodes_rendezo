@@ -607,7 +607,12 @@ class Window(W.QMainWindow):
         metadata = metadata or {}
         state = self.rotation_state(path)
         manual = metadata.get('manual',{})
-        state['auto'] = {index:(angle-manual.get(index,0))%360 for index,angle in metadata.get('rotations',{}).items()}
+        suggestions = {index:(angle-manual.get(index,0))%360 for index,angle in metadata.get('rotations',{}).items()}
+        # Keep explicit rotations made while this background job was running.
+        for index in set(state['manual']) | set(manual):
+            if state['manual'].get(index,0) != manual.get(index,0):
+                suggestions[index] = state['auto'].get(index,0)
+        state['auto'] = suggestions
         self.set_queue_state(path,'Feldolgozási hiba' if error else ('Ellenőrizendő' if data.warnings else 'Felismerve'))
         self.animate_processing()
         if self.current == path:
