@@ -29,15 +29,19 @@ A tesztadatok kizárólag programból készített szintetikus PDF-ek és MSG/EML
 | Ellenőrzés | Módszer | Állapot |
 | --- | --- | --- |
 | Unicode/ANSI fájlleírók, több elem, hibás leíró, COPY-only | platformfüggetlen automatizált teszt | Linuxon sikeres |
-| Egy PDF, több PDF | valódi Windows COM, szintetikus IDataObject és IDropTarget ABI, HGLOBAL/IStream | Windows-buildben ellenőrzendő |
-| Egy teljes e-mail, több e-mail | szintetikus, valódi strukturált MSG IStorage és CopyTo | Windows-buildben ellenőrzendő |
-| MSG IStream/HGLOBAL és vegyes PDF+MSG | natív OLE és tényleges extract-msg import | Windows-buildben ellenőrzendő |
-| Korábbi PDF/MSG/EML fájlok | natív CF_HDROP és korábbi importáló | Windows-buildben ellenőrzendő |
-| Meglévő várólistához hozzáadás és OCR | csomagolt EXE saját szintetikus OLE funkcionális tesztje | Windows-buildben ellenőrzendő |
+| Egy PDF, több PDF | valódi Windows COM, szintetikus IDataObject és IDropTarget ABI, HGLOBAL/IStream | Sikeres Windows Server 2022-n, szintetikus OLE-adatokkal |
+| Egy teljes e-mail, több e-mail | szintetikus, valódi strukturált MSG IStorage és CopyTo | Sikeres Windows Server 2022-n, szintetikus OLE-adatokkal |
+| MSG IStream/HGLOBAL és vegyes PDF+MSG | natív OLE és tényleges extract-msg import | Sikeres Windows Server 2022-n, szintetikus OLE-adatokkal |
+| Korábbi PDF/MSG/EML fájlok | natív CF_HDROP és korábbi importáló | Sikeres Windows Server 2022-n, szintetikus OLE-adatokkal |
+| Meglévő várólistához hozzáadás és OCR | csomagolt EXE saját szintetikus OLE funkcionális tesztje | Sikeres Windows Server 2022-n, szintetikus OLE-adatokkal |
 | Fizikai egérbehúzás klasszikus Outlookból, valamennyi fenti eset | valódi Outlookkal | **Célgépen még nem tesztelt** |
 | Windows 10 1607 és eltérő jogosultságok | tényleges célrendszerrel | **Célgépen még nem tesztelt** |
 
 A GitHub Windows-runneren nincs használható Outlook-profil. A szintetikus COM-teszt nem helyettesíti a valódi Outlook és Windows egérbehúzási útvonal tesztjét; ezt nem állítjuk igazoltnak.
+
+Ellenőrzött build: [GitHub Actions 44066501299](https://github.com/baloghim/NEAK_szerzodes_rendezo/actions/runs/44066501299), `21dcaee` forrásverzió. Windows alatt mind a 26 automatizált teszt sikeres; Linux alatt 25 sikeres és 1 Windows-specifikus teszt kihagyva. A csomagolt EXE a ténylegesen regisztrált natív panel-drop-target COM vtable-ján kapta a szintetikus adatokat; a Qt-jelen keresztül 10 további PDF került a korábban nem üres várólistára és OCR-be. A teszt nem fizikai egérbehúzást szimulál, és nem futtat Outlookot.
+
+Az elkészült EXE PE-manifestjét külön ellenőrzés igazolja: `requestedExecutionLevel=asInvoker`, `uiAccess=false`. Az SMB/UNC mentési regressziós teszt szintén sikeres. A tényleges Outlook-integritási szint kombinációk és Windows 10 1607 tesztje továbbra is a fenti célgépes sorokban marad.
 
 ## Célgépes elfogadási lista
 
