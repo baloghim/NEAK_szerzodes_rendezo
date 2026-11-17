@@ -48,6 +48,15 @@ class Preview(W.QWidget):
         self.scroll.setWidget(self.label)
         layout.addWidget(self.scroll)
 
+    def clear(self):
+        if self.document:
+            self.document.close()
+        self.document = None
+        self.label.clear()
+        self.label.setText('Válassz dokumentumot')
+        self.label.adjustSize()
+        self.counter.setText('0 / 0')
+
     def open(self, path):
         if self.document:
             self.document.close()
@@ -400,6 +409,7 @@ class Window(W.QMainWindow):
         self.queue.clear()
         self.items.clear()
         self.pending.clear()
+        self.scan_preview.clear()
 
     def save(self):
         if not self.current:
@@ -527,6 +537,8 @@ class Window(W.QMainWindow):
         self.store.set_setting('geometry', bytes(self.saveGeometry().toBase64()).decode())
         self.store.set_setting('scan', bytes(self.scan_split.saveState().toBase64()).decode())
         self.store.set_setting('browse', bytes(self.browse_split.saveState().toBase64()).decode())
+        self.scan_preview.clear()
+        self.browse_preview.clear()
         self.store.db.close()
         self.staging.cleanup()
         event.accept()
