@@ -1,4 +1,4 @@
-# Otthonápolási szerződéskezelő v0.1.0
+# Otthonápolási szerződéskezelő v0.1.1
 
 Magyar nyelvű, offline Windows asztali alkalmazás a szkennelt otthonápolási IX/1–IX/3 mellékletek feldolgozására. A dokumentumok és az OCR-szövegek nem kerülnek külső szolgáltatásba.
 
@@ -6,7 +6,7 @@ Magyar nyelvű, offline Windows asztali alkalmazás a szkennelt otthonápolási 
 
 A Windows-kiadás teljes ZIP-jét bontsd ki írható helyre, és indítsd az `OtthonapolasiSzerzodeskezelo.exe` fájlt. Ne csak az EXE-t másold ki: az `_internal` könyvtár is szükséges. Nincs szükség Python vagy OCR telepítésére. Első indításkor válassz szerződésmappát; lehet meghajtóbetűjeles vagy UNC-útvonal is.
 
-A **Szkennelések feldolgozása** oldalon adj hozzá több PDF-et, MSG-t vagy EML-t. A valódi fájlok behúzhatók. A felismerés sorban, háttérszálon fut, minden szükséges oldalt megvizsgál. Ellenőrizd a NEAK-kódot, nevet, rövid nevet, mellékletet és a hatályosságot, majd jelöld az ellenőrzést és válaszd a mentést. A rövid nevek a Beállítások / Szolgáltatói törzsadatok menüben szerkeszthetők, és sikeres mentéskor is megjegyzi őket a program.
+A **Szkennelések feldolgozása** oldalon adj hozzá több PDF-et, MSG-t vagy EML-t. A valódi fájlok és a klasszikus Windows Outlook virtuális PDF-mellékletei, valamint teljes e-mailjei is behúzhatók. Több e-mailből automatikusan kiemeli a PDF-mellékleteket, és a meglévő várólistához adja őket. A felismerés sorban, háttérszálon fut, minden szükséges oldalt megvizsgál. Ellenőrizd a NEAK-kódot, nevet, rövid nevet, mellékletet és a hatályosságot, majd jelöld az ellenőrzést és válaszd a mentést. A rövid nevek a Beállítások / Szolgáltatói törzsadatok menüben szerkeszthetők, és sikeres mentéskor is megjegyzi őket a program.
 
 A mentés másolatot készít, a forrást megőrzi. Névütközéskor másik fájlnevet kell megadni vagy kihagyni a dokumentumot; felülírás nincs. A nyilvántartásban ismert azonos tartalomra figyelmeztet. Hibás hálózati mentés után a tétel nem lesz kész, és újrapróbálható. Az SHA-256 ellenőrzés a másolat integritását is vizsgálja.
 
@@ -28,11 +28,11 @@ python run.py
 
 Forrásból futtatáshoz Tesseract 5 és `hun`, `eng` nyelvi adatok szükségesek. A `TESSDATA_PREFIX` támogatott. Az alkalmazás induláskor maximált, a panelarányokat és az utolsó nézetet megjegyzi.
 
-Windows PowerShell: `./scripts/build-windows.ps1`. A szkript ellenőrzött SHA-256 alapján letölti az OCR telepítőjét, helyi ideiglenes könyvtárba bontja ki a telepítő futtatása nélkül, hozzáadja a magyar nyelvet, futtatja a teszteket, majd PyInstaller one-directory EXE-csomagot és ZIP-et készít. A csomagolt EXE saját szintetikus OCR/PDF/SQLite funkcionális tesztet futtat `--self-test` kapcsolóval. A GitHub Actions valódi Windows-runneren hajtja végre ugyanezt. `v0.1.0` tag push esetén a ZIP-et Release-hez csatolja.
+Windows PowerShell: `./scripts/build-windows.ps1`. A szkript ellenőrzött SHA-256 alapján letölti az OCR telepítőjét, helyi ideiglenes könyvtárba bontja ki a telepítő futtatása nélkül, hozzáadja a magyar nyelvet, futtatja a teszteket, majd PyInstaller one-directory EXE-csomagot és ZIP-et készít. A csomagolt EXE saját szintetikus OCR/PDF/SQLite funkcionális tesztet futtat `--self-test` kapcsolóval. A GitHub Actions valódi Windows-runneren hajtja végre ugyanezt. `v0.1.1` tag push esetén a ZIP-et Release-hez csatolja.
 
 ## Korlátok és ellenőrzések
 
-A Windows 10 1607 kompatibilitás **nem igazolt**, lásd [COMPATIBILITY](docs/COMPATIBILITY.md). A felhőben Linuxon végzett teszt nem Windows-elfogadási teszt. Az Outlook virtuális COM/OLE mellékleteinek közvetlen behúzása nincs megvalósítva: PDF-fájl, mentett MSG és EML import támogatott. A hosszú hálózati mappabeolvasás a felületet átmenetileg foglalhatja; az OCR háttérszálon fut. A duplikátumkeresés a korábban regisztrált másolatokra terjed ki; a tallózott teljes archívumot nem hash-eli automatikusan.
+A Windows 10 1607 kompatibilitás **nem igazolt**, lásd [COMPATIBILITY](docs/COMPATIBILITY.md). A felhőben Linuxon végzett teszt nem Windows-elfogadási teszt. A klasszikus Outlook közvetlen behúzásához natív Windows OLE integráció készült; a tényleges Outlook-verzióval és Windows 10 1607-en végzendő ellenőrzések állapotát az [Outlook tesztjegyzőkönyv](docs/OUTLOOK.md) tartalmazza. Az Outlookot és az alkalmazást is normál jogosultsággal indítsd: eltérő integritási szinten a Windows a behúzást még az alkalmazás értesítése előtt letilthatja. A hosszú hálózati mappabeolvasás a felületet átmenetileg foglalhatja; az OCR háttérszálon fut. A duplikátumkeresés a korábban regisztrált másolatokra terjed ki; a tallózott teljes archívumot nem hash-eli automatikusan.
 
 Privát mintákat, dokumentumokat, OCR-kimeneteket vagy helyi adatbázist tilos commitolni. Az automatizált tesztek szintetikusak. A specifikáció három név szerinti mintája nincs a feltöltött öt PDF között, ezért azokra dokumentumalapú elfogadás nem állítható.
 

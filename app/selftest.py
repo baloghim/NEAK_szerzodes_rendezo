@@ -54,6 +54,25 @@ def run():
         assert window.table.rowCount() == 2
         window.table.selectRow(0)
         app.processEvents()
+        if os.name == 'nt':
+            from .ole_smoke import run_native_cases
+            assert window.native_drops is not None, 'Native HWND drop targets not registered'
+            assert len(window.native_drops.handles) == 3
+            extra = run_native_cases(window.staging.name, source.read_bytes())
+            previous = window.queue.count()
+            window.ole_files.emit(extra, [])
+            deadline = time.monotonic() + 120
+            while time.monotonic() < deadline:
+                app.processEvents()
+                if (window.queue.count() == previous + len(extra) and not window.pending
+                        and not any(job.isRunning() for job in window.jobs)
+                        and all(item['state'] != 'Várakozik' for item in window.items.values())):
+                    break
+                time.sleep(.02)
+            assert window.queue.count() == previous + len(extra), 'OLE files not appended'
+            assert all(item['data'].code == '4321' for item in window.items.values())
+            assert all(item['state'] in ('Felismerve', 'Kész') for item in window.items.values())
+            print('PASS: packaged native OLE transfers append to existing queue and run OCR')
         window.close()
         print('PASS: bundled OCR hun+eng, extraction, Qt, PDF preview, copy, SQLite, browse')
     return 0

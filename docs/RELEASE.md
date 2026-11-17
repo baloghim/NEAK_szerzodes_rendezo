@@ -1,5 +1,7 @@
-Első kipróbálható Windows x64 kiadás. A teljes ZIP-et bontsd ki, majd indítsd az OtthonapolasiSzerzodeskezelo.exe fájlt. Python és Tesseract külön telepítése nem szükséges.
+Klasszikus Outlook drag-and-drop javítás, v0.1.1.
 
-Helyi OCR (magyar és angol), PDF-betekintő, szerkeszthető mezők, biztonságos másolatmentés, szerződéstár és SQLite ePénz-állapotok.
+Natív Windows OLE IDropTarget kezeli a virtuális PDF-mellékleteket és a teljes e-maileket. Több elem egyszerre átvehető; FileGroupDescriptorW/ANSI, indexelt FileContents, HGLOBAL, IStream és IStorage támogatott. Az e-mailek PDF-mellékletei a meglévő OCR-várólistába kerülnek. A korábbi PDF/MSG/EML import és a felületi elrendezés megmaradt. A források nem módosulnak.
 
-Windows 10 1607: tényleges teszt még nem igazolt. Az Outlookból közvetlenül húzott virtuális mellékletek helyett mentsd az üzenetet MSG/EML-ként, vagy húzz valódi PDF-fájlt. Hálózati mappát csak olyan Windows-munkamenetből használj, amely már hozzáfér az adott megosztáshoz. A program nem tölt fel ePénzbe.
+A teljes ZIP-et bontsd ki, majd indítsd az OtthonapolasiSzerzodeskezelo.exe fájlt. Nincs szükség külön Python vagy Tesseract telepítésére. Az Outlookot és az alkalmazást is normál jogosultsággal indítsd: eltérő integritási szinten a Windows blokkolhatja a behúzást.
+
+Tényleges klasszikus Outlookkal és Windows 10 1607-en végzett teszt még nem igazolt. A natív Windows és a csomagolt EXE szintetikus ellenőrzéseinek részletei: docs/OUTLOOK.md a forrásban és a ZIP-ben.

@@ -108,6 +108,8 @@ class Preview(W.QWidget):
 
 
 class Window(W.QMainWindow):
+    ole_files = QtCore.pyqtSignal(object, object)
+
     def __init__(self, data_dir=None):
         super().__init__()
         root = Path(data_dir) if data_dir else Path(QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.AppLocalDataLocation))
@@ -119,14 +121,28 @@ class Window(W.QMainWindow):
         self.pending = []
         self.current = None
         self.loading = False
-        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.0')
+        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.1')
         self.resize(1500, 900)
-        self.setAcceptDrops(True)
+        self.setAcceptDrops(os.name != 'nt')
         self.setStyleSheet('QGroupBox {font-weight:bold; margin-top:18px; border:1px solid #b4c8dd; border-radius:4px;} QGroupBox::title {subcontrol-origin:margin; background:#d5e5f6; padding:5px;} QPushButton {padding:6px;} QLineEdit,QComboBox {padding:4px;} QTabBar::tab:selected {font-weight:bold; background:#e6f0fb;}')
         self.tabs = W.QTabWidget()
         self.setCentralWidget(self.tabs)
         self.scan_page()
         self.browse_page()
+        self.native_drops = None
+        self.ole_files.connect(self.receive_ole_files, QtCore.Qt.QueuedConnection)
+        if os.name == 'nt' and W.QApplication.platformName() == 'windows':
+            from .windows_drop import NativeDrops
+            try:
+                self.native_drops = NativeDrops([self, self.inbox, self.queue.viewport()],
+                                                self.staging.name, self.ole_files.emit)
+            except Exception as error:
+                self.setAcceptDrops(True)
+                message = ('Az Outlook-behúzás nem inicializálható. Az Outlookot és ezt a programot '
+                           'is normál jogosultsággal indítsd. Részletek: ' + str(error))
+                QtCore.QTimer.singleShot(0, lambda message=message: self.error(message))
+        else:
+            self.setAcceptDrops(True)
         self.tabs.currentChanged.connect(self.view_changed)
         menu = self.menuBar().addMenu('Beállítások')
         menu.addAction('Szerződésmappa…', self.choose_folder)
@@ -160,6 +176,7 @@ class Window(W.QMainWindow):
         self.scan_split = W.QSplitter()
         self.tabs.addTab(self.scan_split, 'Szkennelések feldolgozása')
         box, layout = self.panel('Beérkezett dokumentumok')
+        self.inbox = box
         layout.addWidget(W.QLabel('Húzz ide PDF-, MSG- vagy EML-fájlokat\nEgyszerre több dokumentum is hozzáadható.'))
         self.queue = W.QListWidget()
         self.queue.currentItemChanged.connect(self.select_queue)
@@ -304,6 +321,11 @@ class Window(W.QMainWindow):
     def dropEvent(self, event):
         self.add_files([url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()])
         event.acceptProposedAction()
+
+    def receive_ole_files(self, files, errors):
+        self.add_files(files)
+        if errors:
+            self.error('\n'.join(str(error) for error in errors))
 
     def add_files(self, files):
         for file in files:
@@ -537,6 +559,8 @@ class Window(W.QMainWindow):
         self.store.set_setting('geometry', bytes(self.saveGeometry().toBase64()).decode())
         self.store.set_setting('scan', bytes(self.scan_split.saveState().toBase64()).decode())
         self.store.set_setting('browse', bytes(self.browse_split.saveState().toBase64()).decode())
+        if self.native_drops is not None:
+            self.native_drops.close()
         self.scan_preview.clear()
         self.browse_preview.clear()
         self.store.db.close()
