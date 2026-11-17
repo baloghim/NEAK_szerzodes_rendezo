@@ -43,6 +43,21 @@ jobs:
             Write-Output "::error title=Windows dependencies diagnostics::$escaped"
             throw
           }
+      - name: Check copy and status on a Windows SMB share
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $shareName = "NEAKSmoke$env:GITHUB_RUN_ID"
+          $shareDir = Join-Path $env:TEMP $shareName
+          New-Item -ItemType Directory -Force $shareDir | Out-Null
+          try {
+            New-SmbShare -Name $shareName -Path $shareDir -FullAccess "$env:USERDOMAIN\$env:USERNAME" | Out-Null
+            python -m scripts.check_unc "\\localhost\$shareName"
+            if ($LASTEXITCODE) { throw 'Windows UNC check failed' }
+          } finally {
+            Remove-SmbShare -Name $shareName -Force -ErrorAction SilentlyContinue
+            Remove-Item $shareDir -Recurse -Force -ErrorAction SilentlyContinue
+          }
       - name: Prepare verified offline OCR
         shell: pwsh
         run: |

@@ -15,6 +15,8 @@ def resource_dir():
 
 def tesseract_command():
     bundled = resource_dir() / 'ocr' / 'tesseract.exe'
+    if getattr(sys, 'frozen', False) and not bundled.exists():
+        raise RuntimeError('Hiányos kiadási csomag: az OCR futtatható állomány nem található.')
     return str(bundled) if bundled.exists() else 'tesseract'
 
 

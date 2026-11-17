@@ -28,7 +28,7 @@ python run.py
 
 Forrásból futtatáshoz Tesseract 5 és `hun`, `eng` nyelvi adatok szükségesek. A `TESSDATA_PREFIX` támogatott. Az alkalmazás induláskor maximált, a panelarányokat és az utolsó nézetet megjegyzi.
 
-Windows PowerShell: `./scripts/build-windows.ps1`. A szkript ellenőrzött SHA-256 alapján letölti az OCR telepítőjét, helyi ideiglenes könyvtárba telepíti, hozzáadja a magyar nyelvet, futtatja a teszteket, majd PyInstaller one-directory EXE-csomagot és ZIP-et készít. A csomagolt EXE saját szintetikus OCR/PDF/SQLite funkcionális tesztet futtat `--self-test` kapcsolóval. A GitHub Actions valódi Windows-runneren hajtja végre ugyanezt. `v0.1.0` tag push esetén a ZIP-et Release-hez csatolja.
+Windows PowerShell: `./scripts/build-windows.ps1`. A szkript ellenőrzött SHA-256 alapján letölti az OCR telepítőjét, helyi ideiglenes könyvtárba bontja ki a telepítő futtatása nélkül, hozzáadja a magyar nyelvet, futtatja a teszteket, majd PyInstaller one-directory EXE-csomagot és ZIP-et készít. A csomagolt EXE saját szintetikus OCR/PDF/SQLite funkcionális tesztet futtat `--self-test` kapcsolóval. A GitHub Actions valódi Windows-runneren hajtja végre ugyanezt. `v0.1.0` tag push esetén a ZIP-et Release-hez csatolja.
 
 ## Korlátok és ellenőrzések
 
