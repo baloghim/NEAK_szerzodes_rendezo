@@ -163,6 +163,9 @@ class WinAPI:
         self.ole.ReleaseStgMedium(C.byref(medium))
 
     def stream_to_file(self, stream, path):
+        # Outlook may return a stream whose cursor is at its last write position.
+        # Seek-less streams can still be consumed from their initial position.
+        method(stream, 5, HRESULT, C.c_int64, DWORD, PTR)(stream, 0, 0, None)
         buffer = C.create_string_buffer(65536)
         read = ULONG()
         total = 0

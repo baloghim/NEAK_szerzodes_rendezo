@@ -39,7 +39,7 @@ def make_message(api, path, pdf):
         clsid = GUID.of('00020D0B-0000-0000-C000-000000000046')
         check(api.ole.WriteClassStg(root, C.byref(clsid)), 'Synthetic MSG CLSID')
         write_stream(root, '__properties_version1.0',
-                     b'\0'*8 + struct.pack('<IIII',0,1,0,1) + b'\0'*8 + prop(0x340D0003,0x400))
+                     b'\0'*8 + struct.pack('<IIII',0,1,0,1) + b'\0'*8 + prop(0x340D0003,0x40000))
         write_stream(root, '__substg1.0_001A001F', 'IPM.Note\0'.encode('utf-16-le'))
         write_stream(root, '__substg1.0_0037001F', 'Synthetic message\0'.encode('utf-16-le'))
         attachment = PTR()
@@ -149,7 +149,7 @@ class SyntheticDataObject:
                     written=ULONG()
                     check(method(stream,4,HRESULT,PTR,ULONG,C.POINTER(ULONG))(
                         stream,C.c_char_p(content),len(content),C.byref(written)),'Synthetic stream write')
-                    check(method(stream,5,HRESULT,C.c_int64,DWORD,PTR)(stream,0,0,None),'Synthetic stream seek')
+                    # Intentionally leave the stream at EOF: the receiver must rewind it.
                     out.contents.handle=stream.value
             return 0
         except Exception as error:

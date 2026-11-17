@@ -2,7 +2,7 @@
 
 ## Megvalósítás
 
-A v0.1.0 kizárólag a Qt URL/fájlútvonal átadását kezelte; az Outlook virtuális dokumentumai nem ilyenek. A javítás az eredeti felületi elrendezés megtartásával natív Windows `IDropTarget` fogadót regisztrál a főablakra, a Beérkezett dokumentumok panelre és a lista natív viewportjára. A Qt saját Windows drop targetje ezeken nincs párhuzamosan engedélyezve. Linuxon a korábbi Qt-fájlbehúzás marad.
+A v0.1.0 kizárólag a Qt URL/fájlútvonal átadását kezelte; az Outlook virtuális dokumentumai nem ilyenek. A javítás az eredeti felületi elrendezés megtartásával natív Windows `IDropTarget` fogadót regisztrál a Beérkezett dokumentumok panelre és a lista natív viewportjára. A Qt főablakhoz tartozó saját drop targetjét nem cseréljük le: a két natív gyermekablak regisztrációja külön történik, így a Qt saját COM-objektumának élettartamát nem zavarjuk meg. Linuxon a korábbi Qt-fájlbehúzás marad.
 
 A `FileGroupDescriptorW` (és ANSI párja) adja az elemek neveit és sorrendjét. Az indexelt `FileContents` lekérés minden elemnél az eredeti `lindex` értékét használja. Az átadott médium lehet:
 

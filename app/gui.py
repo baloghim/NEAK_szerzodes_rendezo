@@ -123,7 +123,7 @@ class Window(W.QMainWindow):
         self.loading = False
         self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.1')
         self.resize(1500, 900)
-        self.setAcceptDrops(os.name != 'nt')
+        self.setAcceptDrops(True)
         self.setStyleSheet('QGroupBox {font-weight:bold; margin-top:18px; border:1px solid #b4c8dd; border-radius:4px;} QGroupBox::title {subcontrol-origin:margin; background:#d5e5f6; padding:5px;} QPushButton {padding:6px;} QLineEdit,QComboBox {padding:4px;} QTabBar::tab:selected {font-weight:bold; background:#e6f0fb;}')
         self.tabs = W.QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -134,7 +134,7 @@ class Window(W.QMainWindow):
         if os.name == 'nt' and W.QApplication.platformName() == 'windows':
             from .windows_drop import NativeDrops
             try:
-                self.native_drops = NativeDrops([self, self.inbox, self.queue.viewport()],
+                self.native_drops = NativeDrops([self.inbox, self.queue.viewport()],
                                                 self.staging.name, self.ole_files.emit)
             except Exception as error:
                 self.setAcceptDrops(True)

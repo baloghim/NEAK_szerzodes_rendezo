@@ -57,7 +57,7 @@ def run():
         if os.name == 'nt':
             from .ole_smoke import run_native_cases
             assert window.native_drops is not None, 'Native HWND drop targets not registered'
-            assert len(window.native_drops.handles) == 3
+            assert len(window.native_drops.handles) == 2
             extra = run_native_cases(window.staging.name, source.read_bytes())
             previous = window.queue.count()
             window.ole_files.emit(extra, [])
