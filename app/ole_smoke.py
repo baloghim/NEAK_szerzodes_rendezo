@@ -38,6 +38,15 @@ def make_message(api, path, pdf):
     try:
         clsid = GUID.of('00020D0B-0000-0000-C000-000000000046')
         check(api.ole.WriteClassStg(root, C.byref(clsid)), 'Synthetic MSG CLSID')
+        named = PTR()
+        check(method(root, 5, HRESULT, C.c_wchar_p, DWORD, DWORD, DWORD, C.POINTER(PTR))(
+            root, '__nameid_version1.0', 0x1012, 0, 0, C.byref(named)), 'Synthetic named properties')
+        try:
+            for stream_name in ('__substg1.0_00020102', '__substg1.0_00030102', '__substg1.0_00040102'):
+                write_stream(named, stream_name, b'')
+            check(method(named,9,HRESULT,DWORD)(named,0),'Synthetic named properties commit')
+        finally:
+            method(named,2,ULONG)(named)
         write_stream(root, '__properties_version1.0',
                      b'\0'*8 + struct.pack('<IIII',0,1,0,1) + b'\0'*8 + prop(0x340D0003,0x40000))
         write_stream(root, '__substg1.0_001A001F', 'IPM.Note\0'.encode('utf-16-le'))
