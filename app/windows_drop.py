@@ -274,6 +274,8 @@ class Receiver:
                         raise ValueError('Nem támogatott Outlook-adatátadási mód.')
                     if size is not None and entry.size is not None and size != entry.size:
                         raise ValueError('Az átvett Outlook-fájl mérete nem egyezik a leíróval.')
+                    if path.stat().st_size > MAX_FILE:
+                        raise ValueError('Az Outlookból átvett fájl túl nagy.')
                     if path.stat().st_size == 0:
                         raise ValueError('Üres Outlook-fájltartalom.')
                     paths.append(path)

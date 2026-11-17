@@ -27,6 +27,8 @@ if ($Stage -in @('all','ocr')) {
 if ($Stage -in @('all','package')) {
     python -m PyInstaller --noconfirm --clean --windowed --onedir --name OtthonapolasiSzerzodeskezelo --collect-all pypdfium2 --collect-all extract_msg --copy-metadata extract-msg --add-data "$ocr;ocr" run.py
     if ($LASTEXITCODE) { throw 'PyInstaller failed' }
+    python -m scripts.check_manifest dist/OtthonapolasiSzerzodeskezelo/OtthonapolasiSzerzodeskezelo.exe
+    if ($LASTEXITCODE) { throw 'Executable privilege manifest check failed' }
 }
 if ($Stage -in @('all','verify')) {
     $exe = 'dist/OtthonapolasiSzerzodeskezelo/OtthonapolasiSzerzodeskezelo.exe'

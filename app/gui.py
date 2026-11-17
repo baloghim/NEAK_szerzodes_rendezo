@@ -316,11 +316,13 @@ class Window(W.QMainWindow):
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
 
     def dropEvent(self, event):
         self.add_files([url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()])
-        event.acceptProposedAction()
+        event.setDropAction(QtCore.Qt.CopyAction)
+        event.accept()
 
     def receive_ole_files(self, files, errors):
         self.add_files(files)

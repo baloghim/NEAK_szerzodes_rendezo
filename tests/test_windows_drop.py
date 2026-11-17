@@ -64,3 +64,24 @@ def test_native_windows_media_and_msg_import(tmp_path):
         pytest.skip('Real Windows COM/OLE APIs are required')
     from app.ole_smoke import run_native_cases
     assert len(run_native_cases(tmp_path,b'%PDF-synthetic acceptance fixture')) == 10
+
+
+def test_fallback_qt_drop_always_copies():
+    from PyQt5 import QtCore
+    from app.gui import Window
+    class Mime:
+        def hasUrls(self): return True
+        def urls(self): return [QtCore.QUrl.fromLocalFile('/synthetic.pdf')]
+    class Event:
+        def mimeData(self): return Mime()
+        def setDropAction(self,action): self.action=action
+        def accept(self): self.accepted=True
+    class Receiver:
+        def add_files(self,files): self.files=files
+    event=Event()
+    Window.dragEnterEvent(None,event)
+    assert event.action==QtCore.Qt.CopyAction and event.accepted
+    receiver=Receiver()
+    Window.dropEvent(receiver,event)
+    assert event.action==QtCore.Qt.CopyAction and event.accepted
+    assert len(receiver.files)==1
