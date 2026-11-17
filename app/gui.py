@@ -8,7 +8,7 @@ import sys
 import tempfile
 from PyQt5 import QtCore, QtGui, QtWidgets as W
 import pypdfium2 as pdfium
-from .core import Contract, Store, STATUSES, extract_contract, parse_filename, save_copy, digest
+from .core import Contract, Store, STATUSES, extract_contract, parse_filename, save_copy, digest, available_years
 from .documents import recognize, import_files
 from .pdf_ops import PDF_LOCK, write_rotated, replace_rotated
 
@@ -16,9 +16,10 @@ from .pdf_ops import PDF_LOCK, write_rotated, replace_rotated
 class Worker(QtCore.QThread):
     result = QtCore.pyqtSignal(object, object, str, object)
 
-    def __init__(self, path, providers, automatic=True, rotations=None, manual=None):
+    def __init__(self, path, providers, automatic=True, rotations=None, manual=None, token=None):
         super().__init__()
         self.path, self.providers = path, providers
+        self.token = token
         self.automatic, self.rotations, self.manual = automatic, rotations or {}, manual or {}
 
     def run(self):
@@ -27,9 +28,9 @@ class Worker(QtCore.QThread):
             data = extract_contract(result.text, self.providers)
             data.warnings.extend(result.warnings)
             error = '\n'.join(message for message in result.warnings if 'feldolgozási hibája' in message)
-            self.result.emit(self.path, data, error, {'rotations': result.rotations, 'manual': self.manual})
+            self.result.emit(self.path, data, error, {'rotations': result.rotations, 'manual': self.manual, 'token': self.token})
         except Exception as error:
-            self.result.emit(self.path, Contract(warnings=[str(error)]), str(error), {})
+            self.result.emit(self.path, Contract(warnings=[str(error)]), str(error), {'token': self.token})
 
 
 class PathLabel(W.QLabel):
@@ -162,7 +163,10 @@ class Preview(W.QWidget):
         for label,action in [('Forgatás balra',lambda:self.rotate(-90)),
                              ('Forgatás jobbra',lambda:self.rotate(90)),
                              ('Forgatás mentése',lambda:self.rotation_save.emit(self))]:
-            rotation_bar.addAction(label,action)
+            action_item = rotation_bar.addAction(label,action)
+            if label == 'Forgatás mentése':
+                self.rotation_save_action = action_item
+                self.rotation_save_action.setEnabled(False)
         layout.addWidget(rotation_bar)
         self.scroll = W.QScrollArea()
         self.label = W.QLabel('Válassz dokumentumot')
@@ -186,10 +190,14 @@ class Preview(W.QWidget):
                 self.document.close()
         self.document = None
         self.path = None
+        self.rotation_save_action.setEnabled(False)
         self.label.clear()
         self.label.setText('Válassz dokumentumot')
         self.label.adjustSize()
         self.counter.setText('0 / 0')
+        self.index = 0
+        self.scale = 1.0
+        self.state = {'auto': {}, 'manual': {}}
 
     def open(self, path, state=None):
         self.clear()
@@ -201,6 +209,7 @@ class Preview(W.QWidget):
                 content = Path(path).read_bytes()
                 self.document = pdfium.PdfDocument(content)
             self.fingerprint = hashlib.sha256(content).hexdigest()
+            self.rotation_save_action.setEnabled(True)
             self.render()
         except Exception as error:
             self.label.setText('A PDF nem jeleníthető meg: ' + str(error))
@@ -252,6 +261,19 @@ class Preview(W.QWidget):
             self.label.setText(str(error))
 
 
+class DateItem(W.QTableWidgetItem):
+    """Display Hungarian dates; sort by an actual QDate, never by label text."""
+    def __init__(self, compact):
+        self.date = QtCore.QDate.fromString(compact,'yyyyMMdd')
+        super().__init__(self.date.toString('yyyy.MM.dd.') if self.date.isValid() else '')
+        self.setData(QtCore.Qt.UserRole+2,self.date)
+
+    def __lt__(self, other):
+        value = other.data(QtCore.Qt.UserRole+2)
+        right = value.toJulianDay() if isinstance(value,QtCore.QDate) and value.isValid() else 0
+        return (self.date.toJulianDay() if self.date.isValid() else 0) < right
+
+
 class Window(W.QMainWindow):
     ole_files = QtCore.pyqtSignal(object, object)
 
@@ -265,9 +287,11 @@ class Window(W.QMainWindow):
         self.items = {}
         self.pending = []
         self.current = None
+        self.session_id = 0
+        self.item_serial = 0
         self.loading = False
         self.rotation_states = {}
-        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.2')
+        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.3')
         self.resize(1500, 900)
         self.setAcceptDrops(True)
         self.setStyleSheet('QGroupBox {font-weight:bold; margin-top:18px; border:1px solid #b4c8dd; border-radius:4px;} QGroupBox::title {subcontrol-origin:margin; background:#d5e5f6; padding:5px;} QPushButton {padding:6px;} QLineEdit,QComboBox {padding:4px;} QTabBar::tab:selected {font-weight:bold; background:#e6f0fb;}')
@@ -380,7 +404,8 @@ class Window(W.QMainWindow):
         self.button('Felismerés újra', self.rerun, bar)
         self.button('Kihagyás', self.next_item, bar)
         layout.addLayout(bar)
-        self.button('Mentés és következő',self.save,layout)
+        self.save_button = self.button('Mentés és következő',self.save,layout)
+        self.save_button.setEnabled(False)
         self.scan_split.addWidget(box)
         self.scan_preview = Preview()
         self.scan_preview.rotation_save.connect(self.save_rotation)
@@ -395,6 +420,15 @@ class Window(W.QMainWindow):
         self.search.setPlaceholderText('NEAK-kód, szolgáltató, fájlnév…')
         self.search.textChanged.connect(self.filter_rows)
         layout.addWidget(self.search)
+        self.year_filter = W.QComboBox()
+        self.year_filter.setToolTip('Hatályosság kezdőéve a fájlnév alapján')
+        self.year_filter.currentIndexChanged.connect(self.filter_rows)
+        layout.addWidget(self.year_filter)
+        self.refresh_years()
+        self.year_timer = QtCore.QTimer(self)
+        self.year_timer.setInterval(60000)
+        self.year_timer.timeout.connect(self.refresh_years)
+        self.year_timer.start()
         self.annex_filter = W.QComboBox()
         self.annex_filter.addItems(['Összes melléklet', 'IX-1', 'IX-2', 'IX-3'])
         self.annex_filter.currentIndexChanged.connect(self.filter_rows)
@@ -411,11 +445,13 @@ class Window(W.QMainWindow):
         box, layout = self.panel('Szerződések listája')
         self.table = W.QTableWidget(0, 6)
         self.table.horizontalHeader().setToolTip('A fejléc kattintásával rendezhető.')
-        self.table.setHorizontalHeaderLabels(['Fájlnév', 'NEAK-kód', 'Szolgáltató', 'Melléklet', 'Hatályosság', 'ePénz'])
+        self.table.setHorizontalHeaderLabels(['Fájlnév', 'NEAK-kód', 'Szolgáltató', 'Melléklet', 'Hatályosság kezdete', 'ePénz'])
         self.table.setSelectionBehavior(W.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(W.QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(W.QAbstractItemView.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self.select_contract)
+        self.table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.show_status_menu)
         self.table.horizontalHeader().setSectionResizeMode(W.QHeaderView.ResizeToContents)
         layout.addWidget(self.table)
         middle.addWidget(box)
@@ -558,7 +594,8 @@ class Window(W.QMainWindow):
                     item = W.QListWidgetItem(path.name + ' — Várakozik')
                     item.setData(QtCore.Qt.UserRole, str(path))
                     self.queue.addItem(item)
-                    self.items[str(path)] = {'item': item, 'data': Contract(), 'state': 'Várakozik'}
+                    self.item_serial += 1
+                    self.items[str(path)] = {'item': item, 'data': Contract(), 'state': 'Várakozik', 'token': self.item_serial}
                     self.pending.append(str(path))
                 if not paths:
                     self.error('Az üzenetben nincs PDF-melléklet.')
@@ -578,7 +615,8 @@ class Window(W.QMainWindow):
         state = self.rotation_state(path)
         rotations = {key: ((state['auto'].get(key,0) if self.store.setting('auto_preview','1')=='1' else 0)+state['manual'].get(key,0))%360
                      for key in set(state['auto']) | set(state['manual'])}
-        worker = Worker(path, self.store.providers(), self.store.setting('auto_ocr','1')=='1',rotations,dict(state['manual']))
+        worker = Worker(path, self.store.providers(), self.store.setting('auto_ocr','1')=='1',rotations,dict(state['manual']),
+                        token=(self.session_id,self.items[path]['token']))
         self.set_queue_state(path,'Feldolgozás')
         self.pulse.start()
         worker.result.connect(self.recognized)
@@ -592,6 +630,7 @@ class Window(W.QMainWindow):
         entry['item'].setText(Path(path).name+' — '+state)
         entry['item'].setData(QtCore.Qt.UserRole+1,state)
         entry['item'].setToolTip(Path(path).name+' — '+state)
+        self.update_save_enabled()
 
     def animate_processing(self):
         active = [entry for entry in self.items.values() if entry['state']=='Feldolgozás']
@@ -607,8 +646,11 @@ class Window(W.QMainWindow):
         if path not in self.items:
             return
         entry = self.items[path]
-        entry['data'] = data
         metadata = metadata or {}
+        token = metadata.get('token')
+        if token is not None and token != (self.session_id,entry['token']):
+            return
+        entry['data'] = data
         state = self.rotation_state(path)
         manual = metadata.get('manual',{})
         suggestions = {index:(angle-manual.get(index,0))%360 for index,angle in metadata.get('rotations',{}).items()}
@@ -629,6 +671,9 @@ class Window(W.QMainWindow):
         if self.current:
             self.load_fields(self.items[self.current]['data'])
             self.scan_preview.open(self.current,self.rotation_state(self.current))
+        else:
+            self.reset_scan_details()
+        self.update_save_enabled()
 
     def contract_fields(self):
         values = {key: edit.currentText() if isinstance(edit, W.QComboBox) else edit.text().strip()
@@ -680,12 +725,34 @@ class Window(W.QMainWindow):
             self.items.pop(path, None)
             del item
 
+    def update_save_enabled(self):
+        if hasattr(self,'save_button'):
+            entry = self.items.get(self.current)
+            self.save_button.setEnabled(bool(entry and entry['state'] not in ('Várakozik','Feldolgozás')))
+
+    def reset_scan_details(self):
+        self.load_fields(Contract())
+        self.filename.clear()
+        self.warning.clear()
+        self.confirm.setChecked(False)
+        self.scan_preview.clear()
+        self.scan_preview.fit = self.store.setting('pdf_view','Oldalszélesség')=='Oldalszélesség'
+        self.update_save_enabled()
+
     def clear_queue(self):
+        # Invalidate results BEFORE changing widgets, including re-import of the
+        # same pathname while an older worker is still finishing in the background.
+        self.session_id += 1
+        paths = list(self.items)
         self.current = None
+        self.pending.clear()
         self.queue.clear()
         self.items.clear()
-        self.pending.clear()
-        self.scan_preview.clear()
+        for path in paths:
+            self.rotation_states.pop(path,None)
+        self.pulse.stop()
+        self.reset_scan_details()
+        self.statusBar().showMessage('A feldolgozási lista kiürítve.')
 
     def save(self):
         if not self.current:
@@ -742,6 +809,7 @@ class Window(W.QMainWindow):
     def refresh(self):
         if not hasattr(self, 'table'):
             return
+        self.refresh_years()
         self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
         folder = self.folder.text()
@@ -759,7 +827,7 @@ class Window(W.QMainWindow):
                 self.table.insertRow(row)
                 values = [path.name, data.code, data.provider, data.annex, data.date, self.store.status(path)[0]]
                 for col, value in enumerate(values):
-                    cell = W.QTableWidgetItem(value)
+                    cell = DateItem(data.date) if col==4 else W.QTableWidgetItem(value)
                     cell.setData(QtCore.Qt.UserRole, str(path))
                     self.table.setItem(row, col, cell)
             self.table.setSortingEnabled(True)
@@ -772,13 +840,32 @@ class Window(W.QMainWindow):
         self.search.clear()
         self.annex_filter.setCurrentIndex(0)
         self.status_filter.setCurrentIndex(0)
+        self.year_filter.setCurrentIndex(0)
+
+    def refresh_years(self, year=None):
+        options = ['Összes év'] + available_years(year)
+        if [self.year_filter.itemText(i) for i in range(self.year_filter.count())] == options:
+            return
+        previous = self.year_filter.currentText()
+        blocked = self.year_filter.blockSignals(True)
+        self.year_filter.clear()
+        self.year_filter.addItems(options)
+        self.year_filter.setCurrentText(previous if previous in options else 'Összes év')
+        self.year_filter.blockSignals(blocked)
+        if hasattr(self,'table'):
+            self.filter_rows()
 
     def filter_rows(self):
+        if not hasattr(self,'table'):
+            return
         for row in range(self.table.rowCount()):
             values = [self.table.item(row, col).text() for col in range(6)]
             visible = self.search.text().casefold() in ' '.join(values).casefold()
             visible &= self.annex_filter.currentIndex() == 0 or values[3] == self.annex_filter.currentText()
             visible &= self.status_filter.currentIndex() == 0 or values[5] == self.status_filter.currentText()
+            date = self.table.item(row,4).data(QtCore.Qt.UserRole+2)
+            if self.year_filter.currentIndex()>0:
+                visible &= isinstance(date,QtCore.QDate) and date.isValid() and str(date.year())==self.year_filter.currentText()
             self.table.setRowHidden(row, not visible)
 
     def selected_path(self):
@@ -793,16 +880,47 @@ class Window(W.QMainWindow):
             self.upload_state.setCurrentText(status)
             self.browse_preview.open(path,self.rotation_state(path))
 
-    def mark(self):
-        path = self.selected_path()
-        if path:
+    def show_status_menu(self, position):
+        index = self.table.indexAt(position)
+        if not index.isValid():
+            return
+        self.table.selectionModel().setCurrentIndex(
+            self.table.model().index(index.row(),0),
+            QtCore.QItemSelectionModel.ClearAndSelect | QtCore.QItemSelectionModel.Rows)
+        path = self.selected_path()  # Bind once; sorting/filtering cannot redirect the action.
+        menu = W.QMenu(self.table)
+        for label,status in [('Megjelölés feltöltöttként','Feltöltve'),
+                             ('Nincs feltöltve','Nincs feltöltve'),
+                             ('Ellenőrizendő','Ellenőrizendő'),('Ismeretlen','Ismeretlen')]:
+            action = menu.addAction(label)
+            action.triggered.connect(lambda checked=False,path=path,status=status:self.mark_path(path,status))
+        try:
+            menu.exec_(self.table.viewport().mapToGlobal(position))
+        finally:
+            menu.deleteLater()
+
+    def mark_path(self, path, status):
+        if not path:
+            return
+        try:
+            self.store.mark(path,status)
+            sorting = self.table.isSortingEnabled()
+            self.table.setSortingEnabled(False)
             try:
-                self.store.mark(path, self.upload_state.currentText())
-                self.table.item(self.table.currentRow(), 5).setText(self.upload_state.currentText())
+                for row in range(self.table.rowCount()):
+                    if self.table.item(row,0).data(QtCore.Qt.UserRole)==path:
+                        self.table.item(row,5).setText(status)
+                        break
+            finally:
+                self.table.setSortingEnabled(sorting)
+            if self.selected_path()==path:
                 self.select_contract()
-                self.filter_rows()
-            except Exception as error:
-                self.error(error)
+            self.filter_rows()
+        except Exception as error:
+            self.error(error)
+
+    def mark(self):
+        self.mark_path(self.selected_path(),self.upload_state.currentText())
 
     def open_external(self):
         path = self.selected_path()
@@ -827,6 +945,7 @@ class Window(W.QMainWindow):
         if self.native_drops is not None:
             self.native_drops.close()
         self.pulse.stop()
+        self.year_timer.stop()
         self.scan_preview.clear()
         self.browse_preview.clear()
         self.store.db.close()

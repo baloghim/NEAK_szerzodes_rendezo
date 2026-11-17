@@ -1,5 +1,14 @@
 # Változásnapló
 
+## v0.1.3
+
+- Aktuális évtől 2024-ig frissülő, a meglévő szűrőkkel együtt működő évszűrés.
+- Formázott Hatályosság kezdete oszlop, valódi dátum szerinti rendezéssel.
+- Sorhoz kötött jobb gombos ePénz-állapotmenü, tartós mentéssel és helyes feltöltési időponttal.
+- Teljes feldolgozási adatlap- és PDF-reset listaürítéskor; munkamenet/tételazonosítóval védett késői OCR-eredmények.
+- A beállítások, törzsadatok, mentett fájlok és állapotok változatlan megőrzése.
+- Windows EXE funkcionális próbával bővített szintetikus regressziós tesztek; új függőség és arculatváltás nélkül.
+
 ## v0.1.2
 
 - Rugalmasabb IX/1–IX/3 adatkinyerés: sorokra tördelt és táblázatos mezők, részleges adatok megőrzése.

@@ -209,3 +209,8 @@ def save_copy(source, destination, store, allow_duplicate=False):
                 pass
         raise
     return destination
+
+
+def available_years(current_year=None):
+    year = datetime.now().year if current_year is None else current_year
+    return [str(value) for value in range(year,2023,-1)]

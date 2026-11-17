@@ -1,4 +1,4 @@
-# Otthonápolási szerződéskezelő v0.1.2
+# Otthonápolási szerződéskezelő v0.1.3
 
 Magyar nyelvű, offline Windows asztali alkalmazás a szkennelt otthonápolási IX/1–IX/3 mellékletek feldolgozására. A dokumentumok és az OCR-szövegek nem kerülnek külső szolgáltatásba.
 
@@ -48,3 +48,14 @@ A betekintőben a **Forgatás balra/jobbra** mindig az aktuális oldalt módosí
 A célmappa csak a **Beállítások → Beállítások…** ablakban változtatható. Ugyanitt állítható az alapnézet, az OCR automatikus tájolásfelismerése és a felismert tájolás betekintőbeli alkalmazása. Ha ez utóbbi ki van kapcsolva, az automatikus ajánlás nem kerül sem a nézetbe, sem a végleges másolatba; a kézi forgatás továbbra is érvényes. A főoldalon az útvonal csak tájékoztató, teljes tartalma tooltipben látszik. Minden beállítás a meglévő felhasználói SQLite-adatbázisban tárolódik.
 
 Felismerés alatt kék, félkövér, finoman pulzáló **Feldolgozás** állapot látható; utána Felismerve / Ellenőrizendő / Feldolgozási hiba. A teljes fül- és panelcímekhez a méretezés javult; keskeny betekintőben az eszköztár nyílmenüje kínálja a további műveleteket. Tesztek és korlátok: [v0.1.2 jegyzőkönyv](docs/V012.md).
+
+
+## v0.1.3 funkcionális frissítés
+
+A szerződéstallózó bal oldalán az új évszűrő **Összes év** értékről indul. Az aktuális naptári évtől 2024-ig kínál éveket; a lista frissítéskor és percenként, fájlbeolvasás nélkül követi az évváltást. A fájlnévben szereplő hatályossági évre szűr, a többi keresési/melléklet/ePénz szűrővel együtt. A hibás és hiányzó dátumú fájlok az Összes év nézetben megmaradnak. A dátumoszlop **Hatályosság kezdete**, megjelenítése `ÉÉÉÉ.HH.NN.`, rendezése valódi dátumértékkel történik.
+
+Jobb kattintás a szerződéslista egyik sorára: **Megjelölés feltöltöttként**, **Nincs feltöltve**, **Ellenőrizendő**, **Ismeretlen**. Mindig csak a kattintott dokumentum változik; a PDF érintetlen marad. A Feltöltve állapothoz időpont tartozik, más állapotnál ez már nem aktuális feltöltési időpont. A korábbi állapotválasztó és mentőgomb is működik.
+
+A **Lista ürítése** az egész feldolgozási adatlapot és előnézetet alaphelyzetbe állítja, a mentést letiltja. A célmappa, a beállítások, a törzsadatok, a korábban mentett PDF-ek és az ePénz-állapotok megmaradnak. A háttérben már futó OCR befejezheti a munkáját, de eredménye érvénytelen: sem a kiürített lapot, sem ugyanannak a fájlnak az újraimportált tételét nem írhatja felül. A program nem állít le erőszakkal natív PDF/OCR műveletet.
+
+Tesztjegyzőkönyv: [v0.1.3](docs/V013.md). A grafikus arculat és a GUI-keretrendszer változatlan.

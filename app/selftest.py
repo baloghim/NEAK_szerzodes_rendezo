@@ -76,6 +76,8 @@ def run():
             print('PASS: packaged native OLE transfers append to existing queue and run OCR')
         from .rotation_smoke import run as rotation_smoke
         rotation_smoke(root,font)
+        from .browse_smoke import run as browse_smoke
+        browse_smoke(window,root,source)
         window.close()
         print('PASS: bundled OCR hun+eng, extraction, Qt, PDF preview, copy, SQLite, browse')
     return 0
