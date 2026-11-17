@@ -17,11 +17,11 @@ def run():
         draw = ImageDraw.Draw(image)
         candidates = ['C:/Windows/Fonts/arial.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']
         font = next((ImageFont.truetype(p, 42) for p in candidates if Path(p).exists()), ImageFont.load_default())
-        draw.multiline_text((100, 300), 'Szolgáltató NEAK kódja: T123\nSzolgáltató neve: Minta Kft.\nIX/2. számú melléklet\nHatályos: 2026.02.01. napjától', fill='black', font=font, spacing=35)
+        draw.multiline_text((100, 300), 'Szolgáltató NEAK kódja: 4321\nSzolgáltató neve: Minta Kft.\nIX/2. számú melléklet\nHatályos: 2026.02.01. napjától', fill='black', font=font, spacing=35)
         source = root/'input.pdf'
         image.save(source, 'PDF')
-        data = extract_contract(recognize(source), {'T123':'Minta'})
-        assert data.filename() == 'T123_Minta_IX-2_20260201.pdf', repr(data)
+        data = extract_contract(recognize(source), {'4321':'Minta'})
+        assert data.filename() == '4321_Minta_IX-2_20260201.pdf', repr(data)
         window = Window(root/'settings')
         window.folder.setText(str(root))
         window.scan_preview.open(source)

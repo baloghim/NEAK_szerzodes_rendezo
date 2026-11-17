@@ -64,3 +64,19 @@ def test_network_failure_does_not_register(tmp_path):
 def test_nonconforming_legacy_filename():
     assert parse_filename('T123_Minta_Szolgáltató_IX-3_2025-06-01.pdf').date == '20250601'
     with pytest.raises(ValueError): parse_filename('../bad.pdf')
+
+
+def test_partial_copy_cleanup(tmp_path, monkeypatch):
+    import app.core as core
+    source = tmp_path/'original.pdf'
+    source.write_bytes(b'%PDF-synthetic')
+    target = tmp_path/'copy.pdf'
+    store = Store(tmp_path/'index.sqlite3')
+    def interrupted(original, destination):
+        destination.write(b'partial')
+        raise OSError('Network disconnected')
+    monkeypatch.setattr(core.shutil,'copyfileobj',interrupted)
+    with pytest.raises(OSError): save_copy(source,target,store)
+    assert not target.exists()
+    assert source.read_bytes() == b'%PDF-synthetic'
+    assert store.status(target)[0] == 'Ismeretlen'
