@@ -236,7 +236,11 @@ class Preview(W.QWidget):
                     width = page.get_height() if angle in (90,270) else page.get_width()
                     scale = max(.1, (self.scroll.viewport().width()-24)/width) if self.fit else self.scale
                     self.scale = scale
-                    image = page.render(scale=scale, rotation=angle).to_pil().convert('RGB')
+                    bitmap = page.render(scale=scale,rotation=angle)
+                    try:
+                        image = bitmap.to_pil().convert('RGB')
+                    finally:
+                        bitmap.close()
                 finally:
                     page.close()
             data = image.tobytes()

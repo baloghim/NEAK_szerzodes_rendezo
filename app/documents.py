@@ -104,7 +104,11 @@ def recognize(path, auto_orient=True, detailed=False, initial_rotations=None):
                         if field_score(embedded) == 4 and not auto_orient:
                             image = None
                         else:
-                            image = page.render(scale=2.5, rotation=initial).to_pil().copy()
+                            bitmap = page.render(scale=2.5,rotation=initial)
+                            try:
+                                image = bitmap.to_pil().copy()
+                            finally:
+                                bitmap.close()
                     finally:
                         page.close()
                 if image is None:
