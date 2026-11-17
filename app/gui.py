@@ -113,6 +113,7 @@ class Window(W.QMainWindow):
         self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.0')
         self.resize(1500, 900)
         self.setAcceptDrops(True)
+        self.setStyleSheet('QGroupBox {font-weight:bold; margin-top:18px; border:1px solid #b4c8dd; border-radius:4px;} QGroupBox::title {subcontrol-origin:margin; background:#d5e5f6; padding:5px;} QPushButton {padding:6px;} QLineEdit,QComboBox {padding:4px;} QTabBar::tab:selected {font-weight:bold; background:#e6f0fb;}')
         self.tabs = W.QTabWidget()
         self.setCentralWidget(self.tabs)
         self.scan_page()
@@ -279,7 +280,7 @@ class Window(W.QMainWindow):
                     Contract(row[0].strip().upper(), row[1].strip(), row[2].strip(), 'IX-1', '20260101').validate()
                 with self.store.db:
                     self.store.db.execute('DELETE FROM providers')
-                    self.store.db.executemany('INSERT INTO providers VALUES (?,?,?)', [tuple(v.strip() for v in row) for row in rows])
+                    self.store.db.executemany('INSERT INTO providers VALUES (?,?,?)', [(row[0].strip().upper(), row[1].strip(), row[2].strip()) for row in rows])
             except Exception as error:
                 self.error(error)
 

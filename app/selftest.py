@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 from PyQt5.QtWidgets import QApplication
 from .gui import Window
 from .documents import recognize
-from .core import extract_contract, save_copy
+from .core import extract_contract, Store
 
 
 def run():
@@ -23,12 +23,20 @@ def run():
         image.save(source, 'PDF')
         data = extract_contract(recognize(source), {'4321':'Minta'})
         assert data.filename() == '4321_Minta_IX-2_20260201.pdf', repr(data)
-        window = Window(root/'settings')
+        settings = root/'settings'
+        settings.mkdir()
+        store = Store(settings/'contracts.sqlite3')
+        store.set_setting('folder', str(root))
+        store.db.close()
+        window = Window(settings)
+        def fail(message):
+            raise RuntimeError(str(message))
+        window.error = fail
         window.folder.setText(str(root))
         window.store.provider('4321', 'Minta Kft.', 'Minta')
         window.add_files([str(source)])
         deadline = time.monotonic() + 120
-        while window.items[str(source)]['state'] == 'Várakozik' and time.monotonic() < deadline:
+        while (window.items[str(source)]['state'] == 'Várakozik' or any(job.isRunning() for job in window.jobs)) and time.monotonic() < deadline:
             app.processEvents()
             time.sleep(.02)
         assert window.items[str(source)]['state'] == 'Felismerve'
