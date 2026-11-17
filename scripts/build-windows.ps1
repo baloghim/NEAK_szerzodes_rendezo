@@ -18,7 +18,9 @@ Invoke-WebRequest 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast
 python -m PyInstaller --noconfirm --clean --windowed --onedir --name OtthonapolasiSzerzodeskezelo --collect-all pypdfium2 --collect-all extract_msg --copy-metadata extract-msg --add-data "$ocr;ocr" run.py
 if ($LASTEXITCODE) { throw 'PyInstaller failed' }
 $exe = 'dist/OtthonapolasiSzerzodeskezelo/OtthonapolasiSzerzodeskezelo.exe'
-$smoke = Start-Process $exe -ArgumentList '--self-test' -Wait -PassThru
-if ($smoke.ExitCode -ne 0) { throw 'Packaged executable smoke test failed' }
+$smoke = Start-Process $exe -ArgumentList '--self-test' -PassThru
+if (-not $smoke.WaitForExit(180000)) { $smoke.Kill(); throw 'Packaged executable timed out' }
+if ($smoke.ExitCode -ne 0) { Get-Content self-test-result.json -ErrorAction SilentlyContinue; throw 'Packaged executable smoke test failed' }
+Get-Content self-test-result.json
 Copy-Item README.md,docs/COMPATIBILITY.md,docs/THIRD_PARTY.md -Destination dist/OtthonapolasiSzerzodeskezelo
 Compress-Archive -Path 'dist/OtthonapolasiSzerzodeskezelo' -DestinationPath 'dist/OtthonapolasiSzerzodeskezelo-v0.1.0-windows-x64.zip' -Force

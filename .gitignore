@@ -11,3 +11,4 @@ dist/
 *.eml
 private/
 *.log
+self-test-result.json
