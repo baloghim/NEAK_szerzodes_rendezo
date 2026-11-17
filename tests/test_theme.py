@@ -79,11 +79,11 @@ def test_toolbar_save_and_pdf_open_follow_selection(window,tmp_path,monkeypatch)
     window.main_toolbar.widgetForAction(window.actions['save']).click();window.save_button.click()
     assert called==['save','save']
     urls=[];monkeypatch.setattr(QtGui.QDesktopServices,'openUrl',lambda url:urls.append(url.toLocalFile()) or True)
-    window.actions['pdf'].trigger();assert urls[-1]==str(scan)
+    window.actions['pdf'].trigger();assert Path(urls[-1])==scan
     window.tabs.setCurrentIndex(1)
     row=next(r for r in range(window.table.rowCount()) if window.table.item(r,0).text()==archive.name)
     window.table.selectRow(row);window.actions['pdf'].trigger()
-    assert urls[-1]==str(archive)
+    assert Path(urls[-1])==archive
     assert not window.actions['save'].isEnabled()
     assert window.contract_details['code'].text()=='T123'
     assert window.contract_details['date'].text()=='2026.02.01.'

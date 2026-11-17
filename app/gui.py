@@ -1053,7 +1053,9 @@ class Window(W.QMainWindow):
             status,timestamp=self.store.status(path)
             try:data=parse_filename(Path(path).name)
             except ValueError:data=Contract()
-            values={'path':path,'code':data.code,'provider':data.provider,'annex':data.annex,
+            known=self.store.db.execute('SELECT name FROM providers WHERE code=?',(data.code,)).fetchone()
+            provider=known[0] if known and known[0] else data.provider
+            values={'path':path,'code':data.code,'provider':provider,'annex':data.annex,
                     'date':QtCore.QDate.fromString(data.date,'yyyyMMdd').toString('yyyy.MM.dd.')}
             for key,value in values.items():
                 self.contract_details[key].setText(value);self.contract_details[key].setToolTip(value)
