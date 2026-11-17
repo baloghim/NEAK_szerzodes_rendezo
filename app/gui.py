@@ -196,7 +196,6 @@ class Preview(W.QWidget):
         self.label.adjustSize()
         self.counter.setText('0 / 0')
         self.index = 0
-        self.scale = 1.0
         self.state = {'auto': {}, 'manual': {}}
 
     def open(self, path, state=None):
@@ -736,6 +735,7 @@ class Window(W.QMainWindow):
         self.warning.clear()
         self.confirm.setChecked(False)
         self.scan_preview.clear()
+        self.scan_preview.scale = 1.0
         self.scan_preview.fit = self.store.setting('pdf_view','Oldalszélesség')=='Oldalszélesség'
         self.update_save_enabled()
 
