@@ -101,7 +101,7 @@ class Preview(W.QWidget):
 class Window(W.QMainWindow):
     def __init__(self, data_dir=None):
         super().__init__()
-        root = Path(data_dir) if data_dir else Path(W.QStandardPaths.writableLocation(W.QStandardPaths.AppLocalDataLocation))
+        root = Path(data_dir) if data_dir else Path(QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.AppLocalDataLocation))
         root.mkdir(parents=True, exist_ok=True)
         self.store = Store(root / 'contracts.sqlite3')
         self.staging = tempfile.TemporaryDirectory(prefix='neak-import-')
