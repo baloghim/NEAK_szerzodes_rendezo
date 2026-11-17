@@ -1,4 +1,6 @@
 import base64
+import hashlib
+import math
 import json
 import os
 from pathlib import Path
@@ -8,62 +10,197 @@ from PyQt5 import QtCore, QtGui, QtWidgets as W
 import pypdfium2 as pdfium
 from .core import Contract, Store, STATUSES, extract_contract, parse_filename, save_copy, digest
 from .documents import recognize, import_files
+from .pdf_ops import PDF_LOCK, write_rotated, replace_rotated
 
 
 class Worker(QtCore.QThread):
-    result = QtCore.pyqtSignal(object, object, str)
+    result = QtCore.pyqtSignal(object, object, str, object)
 
-    def __init__(self, path, providers):
+    def __init__(self, path, providers, automatic=True, rotations=None, manual=None):
         super().__init__()
         self.path, self.providers = path, providers
+        self.automatic, self.rotations, self.manual = automatic, rotations or {}, manual or {}
 
     def run(self):
         try:
-            self.result.emit(self.path, extract_contract(recognize(self.path), self.providers), '')
+            result = recognize(self.path, self.automatic, detailed=True, initial_rotations=self.rotations)
+            data = extract_contract(result.text, self.providers)
+            data.warnings.extend(result.warnings)
+            error = '\n'.join(message for message in result.warnings if 'feldolgozási hibája' in message)
+            self.result.emit(self.path, data, error, {'rotations': result.rotations, 'manual': self.manual})
         except Exception as error:
-            self.result.emit(self.path, Contract(warnings=[str(error)]), str(error))
+            self.result.emit(self.path, Contract(warnings=[str(error)]), str(error), {})
+
+
+class PathLabel(W.QLabel):
+    """Read-only, elided informational path with a full-path tooltip."""
+    def __init__(self):
+        super().__init__()
+        self.full_path = ''
+        self.setMinimumWidth(80)
+        self.setSizePolicy(W.QSizePolicy.Ignored, W.QSizePolicy.Preferred)
+
+    def setText(self, text):
+        self.full_path = str(text)
+        self.setToolTip(self.full_path)
+        self.update_text()
+
+    def text(self):
+        return self.full_path
+
+    def update_text(self):
+        super().setText(self.fontMetrics().elidedText(self.full_path or 'Nincs beállítva', QtCore.Qt.ElideMiddle, max(80,self.width())))
+
+    def resizeEvent(self, event):
+        self.update_text()
+        super().resizeEvent(event)
+
+
+class QueueDelegate(W.QStyledItemDelegate):
+    phase = 0
+
+    def paint(self, painter, option, index):
+        state = index.data(QtCore.Qt.UserRole+1)
+        if state != 'Feldolgozás':
+            return super().paint(painter, option, index)
+        opt = W.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        text = opt.text
+        opt.text = ''
+        style = opt.widget.style() if opt.widget else W.QApplication.style()
+        style.drawControl(W.QStyle.CE_ItemViewItem, opt, painter, opt.widget)
+        painter.save()
+        font = opt.font
+        font.setBold(True)
+        painter.setFont(font)
+        intensity = int(20*(1+math.sin(self.phase*math.pi/8)))
+        painter.setPen(QtGui.QColor(20, 80+intensity, 185+intensity))
+        rect = opt.rect.adjusted(5,0,-5,0)
+        painter.drawText(rect, QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
+                         QtGui.QFontMetrics(font).elidedText(text, QtCore.Qt.ElideMiddle, rect.width()))
+        painter.restore()
+
+
+class SettingsDialog(W.QDialog):
+    def __init__(self, store, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Beállítások')
+        self.resize(650,360)
+        layout = W.QVBoxLayout(self)
+        files = W.QGroupBox('Fájlkezelés')
+        row = W.QHBoxLayout(files)
+        self.folder = W.QLineEdit(store.setting('folder'))
+        self.folder.setPlaceholderText('Meghajtóbetűjeles vagy UNC-elérési út')
+        row.addWidget(self.folder)
+        browse = W.QPushButton('Tallózás…')
+        browse.clicked.connect(self.browse)
+        row.addWidget(browse)
+        layout.addWidget(files)
+        pdf = W.QGroupBox('PDF-megjelenítés')
+        form = W.QFormLayout(pdf)
+        self.view = W.QComboBox()
+        self.view.addItems(['Oldalszélesség', '100%'])
+        self.view.setCurrentText(store.setting('pdf_view','Oldalszélesség'))
+        form.addRow('Alapértelmezett nézet', self.view)
+        self.auto_preview = W.QCheckBox('Automatikus tájolás alkalmazása a betekintőben')
+        self.auto_preview.setChecked(store.setting('auto_preview','1')=='1')
+        form.addRow(self.auto_preview)
+        layout.addWidget(pdf)
+        ocr = W.QGroupBox('OCR')
+        row = W.QVBoxLayout(ocr)
+        self.auto_ocr = W.QCheckBox('Automatikus tájolásfelismerés')
+        self.auto_ocr.setChecked(store.setting('auto_ocr','1')=='1')
+        row.addWidget(self.auto_ocr)
+        layout.addWidget(ocr)
+        buttons = W.QDialogButtonBox(W.QDialogButtonBox.Save | W.QDialogButtonBox.Cancel)
+        buttons.button(W.QDialogButtonBox.Save).setText('Mentés')
+        buttons.button(W.QDialogButtonBox.Cancel).setText('Mégse')
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def browse(self):
+        path = W.QFileDialog.getExistingDirectory(self, 'Szerződésmappa kiválasztása', self.folder.text())
+        if path:
+            self.folder.setText(path)
+
+    def apply(self, store):
+        folder = self.folder.text().strip()
+        if folder and not Path(folder).is_dir():
+            raise ValueError('A megadott célmappa nem érhető el.')
+        with store.db:
+            for key, value in [('folder',folder), ('pdf_view',self.view.currentText()),
+                               ('auto_preview','1' if self.auto_preview.isChecked() else '0'),
+                               ('auto_ocr','1' if self.auto_ocr.isChecked() else '0')]:
+                store.db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(key,value))
 
 
 class Preview(W.QWidget):
+    rotation_save = QtCore.pyqtSignal(object)
+
     def __init__(self):
         super().__init__()
         self.document = None
+        self.path = None
+        self.state = {'auto': {}, 'manual': {}}
+        self.apply_auto = True
         self.index = 0
         self.scale = 1.0
         self.fit = True
         layout = W.QVBoxLayout(self)
-        bar = W.QHBoxLayout()
-        for label, action in [('◀', lambda: self.turn(-1)), ('▶', lambda: self.turn(1)),
-                              ('−', lambda: self.zoom(.8)), ('+', lambda: self.zoom(1.25)),
-                              ('Oldalszélesség', self.fit_width)]:
-            button = W.QPushButton(label)
-            button.clicked.connect(action)
-            bar.addWidget(button)
+        navigation = W.QToolBar()
+        navigation.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        for label, action in [('◀',lambda:self.turn(-1)),('▶',lambda:self.turn(1)),
+                              ('−',lambda:self.zoom(.8)),('+',lambda:self.zoom(1.25)),
+                              ('Oldalszélesség',self.fit_width)]:
+            navigation.addAction(label,action)
         self.counter = W.QLabel('0 / 0')
-        bar.addWidget(self.counter)
-        layout.addLayout(bar)
+        navigation.addWidget(self.counter)
+        layout.addWidget(navigation)
+        rotation_bar = W.QToolBar()
+        rotation_bar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        for label,action in [('Forgatás balra',lambda:self.rotate(-90)),
+                             ('Forgatás jobbra',lambda:self.rotate(90)),
+                             ('Forgatás mentése',lambda:self.rotation_save.emit(self))]:
+            rotation_bar.addAction(label,action)
+        layout.addWidget(rotation_bar)
         self.scroll = W.QScrollArea()
         self.label = W.QLabel('Válassz dokumentumot')
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.scroll.setWidget(self.label)
         layout.addWidget(self.scroll)
 
-    def clear(self):
+    def rotation_map(self):
+        keys = set(self.state['auto']) | set(self.state['manual'])
+        return {index: ((self.state['auto'].get(index,0) if self.apply_auto else 0)
+                        + self.state['manual'].get(index,0)) % 360 for index in keys}
+
+    def rotate(self, angle):
         if self.document:
-            self.document.close()
+            self.state['manual'][self.index] = (self.state['manual'].get(self.index,0)+angle)%360
+            self.render()
+
+    def clear(self):
+        with PDF_LOCK:
+            if self.document:
+                self.document.close()
         self.document = None
+        self.path = None
         self.label.clear()
         self.label.setText('Válassz dokumentumot')
         self.label.adjustSize()
         self.counter.setText('0 / 0')
 
-    def open(self, path):
-        if self.document:
-            self.document.close()
-        self.document = None
+    def open(self, path, state=None):
+        self.clear()
+        self.path = str(path)
+        self.state = state if state is not None else {'auto': {}, 'manual': {}}
         self.index = 0
         try:
-            self.document = pdfium.PdfDocument(str(path))
+            with PDF_LOCK:
+                content = Path(path).read_bytes()
+                self.document = pdfium.PdfDocument(content)
+            self.fingerprint = hashlib.sha256(content).hexdigest()
             self.render()
         except Exception as error:
             self.label.setText('A PDF nem jeleníthető meg: ' + str(error))
@@ -92,17 +229,21 @@ class Preview(W.QWidget):
         if not self.document:
             return
         try:
-            page = self.document[self.index]
-            scale = max(.2, (self.scroll.viewport().width() - 24) / page.get_width()) if self.fit else self.scale
-            self.scale = scale
-            bitmap = page.render(scale=scale)
-            image = bitmap.to_pil().convert('RGB')
+            with PDF_LOCK:
+                page = self.document[self.index]
+                try:
+                    angle = self.rotation_map().get(self.index,0)
+                    width = page.get_height() if angle in (90,270) else page.get_width()
+                    scale = max(.1, (self.scroll.viewport().width()-24)/width) if self.fit else self.scale
+                    self.scale = scale
+                    image = page.render(scale=scale, rotation=angle).to_pil().convert('RGB')
+                finally:
+                    page.close()
             data = image.tobytes()
-            qimage = QtGui.QImage(data, image.width, image.height, image.width * 3, QtGui.QImage.Format_RGB888).copy()
+            qimage = QtGui.QImage(data, image.width, image.height, image.width*3, QtGui.QImage.Format_RGB888).copy()
             self.label.setPixmap(QtGui.QPixmap.fromImage(qimage))
-            self.label.resize(image.width, image.height)
-            self.counter.setText(f'{self.index + 1} / {len(self.document)}')
-            page.close()
+            self.label.resize(image.width,image.height)
+            self.counter.setText(f'{self.index+1} / {len(self.document)}')
         except Exception as error:
             self.label.setText(str(error))
 
@@ -121,11 +262,16 @@ class Window(W.QMainWindow):
         self.pending = []
         self.current = None
         self.loading = False
-        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.1')
+        self.rotation_states = {}
+        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.2')
         self.resize(1500, 900)
         self.setAcceptDrops(True)
         self.setStyleSheet('QGroupBox {font-weight:bold; margin-top:18px; border:1px solid #b4c8dd; border-radius:4px;} QGroupBox::title {subcontrol-origin:margin; background:#d5e5f6; padding:5px;} QPushButton {padding:6px;} QLineEdit,QComboBox {padding:4px;} QTabBar::tab:selected {font-weight:bold; background:#e6f0fb;}')
         self.tabs = W.QTabWidget()
+        self.tabs.setElideMode(QtCore.Qt.ElideNone)
+        self.tabs.tabBar().setExpanding(False)
+        self.tabs.setUsesScrollButtons(True)
+        self.tabs.setStyleSheet('QTabBar::tab {padding:10px 18px; min-height:24px;}')
         self.setCentralWidget(self.tabs)
         self.scan_page()
         self.browse_page()
@@ -147,10 +293,10 @@ class Window(W.QMainWindow):
             self.setAcceptDrops(True)
         self.tabs.currentChanged.connect(self.view_changed)
         menu = self.menuBar().addMenu('Beállítások')
-        menu.addAction('Szerződésmappa…', self.choose_folder)
+        menu.addAction('Beállítások…', self.show_settings)
         menu.addAction('Szolgáltatói törzsadatok…', self.edit_providers)
         self.statusBar().showMessage('Kész – minden feldolgozás helyben történik')
-        self.folder.setText(self.store.setting('folder'))
+        self.apply_settings()
         self.tabs.setCurrentIndex(int(self.store.setting('view', '0')))
         for key, splitter in [('scan', self.scan_split), ('browse', self.browse_split)]:
             state = self.store.setting(key)
@@ -161,7 +307,7 @@ class Window(W.QMainWindow):
             self.restoreGeometry(QtCore.QByteArray.fromBase64(geometry.encode()))
         self.refresh()
         if not self.folder.text():
-            QtCore.QTimer.singleShot(200, self.choose_folder)
+            QtCore.QTimer.singleShot(200, self.show_settings)
 
     def button(self, text, action, layout):
         button = W.QPushButton(text)
@@ -172,6 +318,10 @@ class Window(W.QMainWindow):
     def panel(self, title):
         box = W.QGroupBox(title)
         layout = W.QVBoxLayout(box)
+        box.ensurePolished()
+        title_font = QtGui.QFont(box.font())
+        title_font.setBold(True)
+        box.setMinimumWidth(QtGui.QFontMetrics(title_font).horizontalAdvance(title)+40)
         return box, layout
 
     def scan_page(self):
@@ -179,8 +329,15 @@ class Window(W.QMainWindow):
         self.tabs.addTab(self.scan_split, 'Szkennelések feldolgozása')
         box, layout = self.panel('Beérkezett dokumentumok')
         self.inbox = box
-        layout.addWidget(W.QLabel('Húzz ide PDF-, MSG- vagy EML-fájlokat\nEgyszerre több dokumentum is hozzáadható.'))
+        instruction = W.QLabel('Húzz ide PDF-, MSG- vagy EML-fájlokat\nEgyszerre több dokumentum is hozzáadható.')
+        instruction.setWordWrap(True)
+        layout.addWidget(instruction)
         self.queue = W.QListWidget()
+        self.queue_delegate = QueueDelegate(self.queue)
+        self.queue.setItemDelegate(self.queue_delegate)
+        self.pulse = QtCore.QTimer(self)
+        self.pulse.setInterval(180)
+        self.pulse.timeout.connect(self.animate_processing)
         self.queue.currentItemChanged.connect(self.select_queue)
         layout.addWidget(self.queue)
         bar = W.QHBoxLayout()
@@ -203,9 +360,8 @@ class Window(W.QMainWindow):
             form.addRow(title, edit)
         self.filename = W.QLineEdit()
         form.addRow('Javasolt fájlnév', self.filename)
-        self.folder = W.QLineEdit()
+        self.folder = PathLabel()
         form.addRow('Mentési mappa', self.folder)
-        self.button('Mappa kiválasztása…', self.choose_folder, layout)
         layout.addLayout(form)
         self.warning = W.QLabel()
         self.warning.setWordWrap(True)
@@ -219,10 +375,11 @@ class Window(W.QMainWindow):
         bar = W.QHBoxLayout()
         self.button('Felismerés újra', self.rerun, bar)
         self.button('Kihagyás', self.next_item, bar)
-        self.button('Mentés és következő', self.save, bar)
         layout.addLayout(bar)
+        self.button('Mentés és következő',self.save,layout)
         self.scan_split.addWidget(box)
         self.scan_preview = Preview()
+        self.scan_preview.rotation_save.connect(self.save_rotation)
         self.scan_split.addWidget(self.scan_preview)
         self.scan_split.setSizes([350, 450, 650])
 
@@ -247,8 +404,9 @@ class Window(W.QMainWindow):
         layout.addStretch()
         self.browse_split.addWidget(box)
         middle = W.QSplitter(QtCore.Qt.Vertical)
-        box, layout = self.panel('Szerződések listája – fejléc kattintásával rendezhető')
+        box, layout = self.panel('Szerződések listája')
         self.table = W.QTableWidget(0, 6)
+        self.table.horizontalHeader().setToolTip('A fejléc kattintásával rendezhető.')
         self.table.setHorizontalHeaderLabels(['Fájlnév', 'NEAK-kód', 'Szolgáltató', 'Melléklet', 'Hatályosság', 'ePénz'])
         self.table.setSelectionBehavior(W.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(W.QAbstractItemView.SingleSelection)
@@ -270,6 +428,7 @@ class Window(W.QMainWindow):
         middle.addWidget(box)
         self.browse_split.addWidget(middle)
         self.browse_preview = Preview()
+        self.browse_preview.rotation_save.connect(self.save_rotation)
         self.browse_split.addWidget(self.browse_preview)
         self.browse_split.setSizes([220, 650, 650])
 
@@ -280,12 +439,66 @@ class Window(W.QMainWindow):
     def error(self, error):
         W.QMessageBox.warning(self, 'Ellenőrizendő', str(error))
 
+    def rotation_state(self, path):
+        return self.rotation_states.setdefault(str(path), {'auto': {}, 'manual': {}})
+
+    def apply_settings(self):
+        self.folder.setText(self.store.setting('folder'))
+        for preview in (self.scan_preview, self.browse_preview):
+            preview.apply_auto = self.store.setting('auto_preview','1') == '1'
+            preview.fit = self.store.setting('pdf_view','Oldalszélesség') == 'Oldalszélesség'
+            if not preview.fit:
+                preview.scale = 1.0
+            preview.render()
+
+    def show_settings(self):
+        dialog = SettingsDialog(self.store,self)
+        while dialog.exec_() == W.QDialog.Accepted:
+            try:
+                dialog.apply(self.store)
+                self.apply_settings()
+                self.refresh()
+                return
+            except Exception as error:
+                self.error(error)
+
     def choose_folder(self):
-        folder = W.QFileDialog.getExistingDirectory(self, 'Szerződésmappa kiválasztása', self.folder.text())
-        if folder:
-            self.folder.setText(folder)
-            self.store.set_setting('folder', folder)
-            self.refresh()
+        self.show_settings()
+
+    def save_rotation(self, preview):
+        if not preview.path or not preview.document:
+            return
+        if preview is self.scan_preview:
+            self.statusBar().showMessage('A forgatás a végleges másolat mentésekor kerül a PDF-be. A forrás változatlan.')
+            return
+        rotations = {key:value for key,value in preview.rotation_map().items() if value}
+        if not rotations:
+            return
+        if any(job.isRunning() and str(job.path)==preview.path for job in self.jobs):
+            self.error('Várd meg a dokumentum felismerésének befejezését.')
+            return
+        answer = W.QMessageBox.question(self,'Forgatás mentése',
+            'A szerződéstári PDF tájolása megváltozik. Felülírod a kijelölt fájlt?',
+            W.QMessageBox.Yes | W.QMessageBox.No,W.QMessageBox.No)
+        if answer != W.QMessageBox.Yes:
+            return
+        try:
+            path = preview.path
+            replace_rotated(path,rotations,preview.fingerprint)
+            state = self.rotation_state(path)
+            state['auto'].clear()
+            state['manual'].clear()
+            for viewer in (self.scan_preview,self.browse_preview):
+                if viewer.path == path:
+                    page = viewer.index
+                    viewer.open(path,state)
+                    viewer.index = page
+                    viewer.render()
+            self.store.db.execute('UPDATE documents SET hash=? WHERE path=?',(digest(path),str(Path(path).absolute())))
+            self.store.db.commit()
+            self.statusBar().showMessage('A PDF forgatása mentve.')
+        except Exception as error:
+            self.error(error)
 
     def edit_providers(self):
         dialog = W.QDialog(self)
@@ -358,28 +571,55 @@ class Window(W.QMainWindow):
         if path not in self.items:
             self.start_next()
             return
-        worker = Worker(path, self.store.providers())
+        state = self.rotation_state(path)
+        rotations = {key: ((state['auto'].get(key,0) if self.store.setting('auto_preview','1')=='1' else 0)+state['manual'].get(key,0))%360
+                     for key in set(state['auto']) | set(state['manual'])}
+        worker = Worker(path, self.store.providers(), self.store.setting('auto_ocr','1')=='1',rotations,dict(state['manual']))
+        self.set_queue_state(path,'Feldolgozás')
+        self.pulse.start()
         worker.result.connect(self.recognized)
         worker.finished.connect(self.start_next)
         self.jobs.append(worker)
         worker.start()
 
-    def recognized(self, path, data, error):
+    def set_queue_state(self, path, state):
+        entry = self.items[path]
+        entry['state'] = state
+        entry['item'].setText(Path(path).name+' — '+state)
+        entry['item'].setData(QtCore.Qt.UserRole+1,state)
+        entry['item'].setToolTip(Path(path).name+' — '+state)
+
+    def animate_processing(self):
+        active = [entry for entry in self.items.values() if entry['state']=='Feldolgozás']
+        if not active:
+            self.pulse.stop()
+            return
+        self.queue_delegate.phase = (self.queue_delegate.phase+1)%16
+        for entry in active:
+            self.queue.viewport().update(self.queue.visualItemRect(entry['item']))
+
+    def recognized(self, path, data, error, metadata=None):
         path = str(path)
         if path not in self.items:
             return
         entry = self.items[path]
-        entry.update(data=data, state='Ellenőrizendő' if data.warnings else 'Felismerve')
-        entry['item'].setText(Path(path).name + ' — ' + entry['state'])
+        entry['data'] = data
+        metadata = metadata or {}
+        state = self.rotation_state(path)
+        manual = metadata.get('manual',{})
+        state['auto'] = {index:(angle-manual.get(index,0))%360 for index,angle in metadata.get('rotations',{}).items()}
+        self.set_queue_state(path,'Feldolgozási hiba' if error else ('Ellenőrizendő' if data.warnings else 'Felismerve'))
+        self.animate_processing()
         if self.current == path:
             self.load_fields(data)
+            self.scan_preview.render()
 
     def select_queue(self, item, previous):
         self.stash_fields()
         self.current = item.data(QtCore.Qt.UserRole) if item else None
         if self.current:
             self.load_fields(self.items[self.current]['data'])
-            self.scan_preview.open(self.current)
+            self.scan_preview.open(self.current,self.rotation_state(self.current))
 
     def contract_fields(self):
         values = {key: edit.currentText() if isinstance(edit, W.QComboBox) else edit.text().strip()
@@ -416,7 +656,8 @@ class Window(W.QMainWindow):
 
     def rerun(self):
         if self.current:
-            self.pending.append(self.current)
+            if self.current not in self.pending:
+                self.pending.append(self.current)
             self.start_next()
 
     def next_item(self):
@@ -467,11 +708,22 @@ class Window(W.QMainWindow):
                 allow = W.QMessageBox.question(self, 'Duplikátum', 'Azonos tartalom már szerepel a nyilvántartásban. Új másolatot szeretnél menteni?', W.QMessageBox.Yes | W.QMessageBox.No, W.QMessageBox.No) == W.QMessageBox.Yes
                 if not allow:
                     return
-            save_copy(self.current, target, self.store, allow)
+            state = self.rotation_state(self.current)
+            rotations = {key: ((state['auto'].get(key,0) if self.store.setting('auto_preview','1')=='1' else 0)+state['manual'].get(key,0))%360
+                         for key in set(state['auto']) | set(state['manual'])}
+            if any(rotations.values()):
+                handle, temporary = tempfile.mkstemp(suffix='.pdf',prefix='rotated-',dir=self.staging.name)
+                os.close(handle)
+                try:
+                    write_rotated(self.current,temporary,rotations)
+                    save_copy(temporary,target,self.store,allow)
+                finally:
+                    Path(temporary).unlink(missing_ok=True)
+            else:
+                save_copy(self.current, target, self.store, allow)
             self.store.provider(data.code, data.provider, data.short)
             self.store.set_setting('folder', str(folder))
-            self.items[self.current]['state'] = 'Kész'
-            self.items[self.current]['item'].setText(Path(self.current).name + ' — Kész')
+            self.set_queue_state(self.current,'Kész')
             self.statusBar().showMessage('Másolat mentve: ' + str(target))
             if self.next_check.isChecked():
                 self.next_item()
@@ -530,7 +782,7 @@ class Window(W.QMainWindow):
             status, timestamp = self.store.status(path)
             self.details.setText(path + '\nÁllapot: ' + status + ('\nFeltöltve: ' + timestamp if timestamp else ''))
             self.upload_state.setCurrentText(status)
-            self.browse_preview.open(path)
+            self.browse_preview.open(path,self.rotation_state(path))
 
     def mark(self):
         path = self.selected_path()
@@ -565,6 +817,7 @@ class Window(W.QMainWindow):
         self.store.set_setting('browse', bytes(self.browse_split.saveState().toBase64()).decode())
         if self.native_drops is not None:
             self.native_drops.close()
+        self.pulse.stop()
         self.scan_preview.clear()
         self.browse_preview.clear()
         self.store.db.close()

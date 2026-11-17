@@ -1,10 +1,10 @@
-# Otthonápolási szerződéskezelő v0.1.1
+# Otthonápolási szerződéskezelő v0.1.2
 
 Magyar nyelvű, offline Windows asztali alkalmazás a szkennelt otthonápolási IX/1–IX/3 mellékletek feldolgozására. A dokumentumok és az OCR-szövegek nem kerülnek külső szolgáltatásba.
 
 ## Használat
 
-A Windows-kiadás teljes ZIP-jét bontsd ki írható helyre, és indítsd az `OtthonapolasiSzerzodeskezelo.exe` fájlt. Ne csak az EXE-t másold ki: az `_internal` könyvtár is szükséges. Nincs szükség Python vagy OCR telepítésére. Első indításkor válassz szerződésmappát; lehet meghajtóbetűjeles vagy UNC-útvonal is.
+A Windows-kiadás teljes ZIP-jét bontsd ki írható helyre, és indítsd az `OtthonapolasiSzerzodeskezelo.exe` fájlt. Ne csak az EXE-t másold ki: az `_internal` könyvtár is szükséges. Nincs szükség Python vagy OCR telepítésére. Első indításkor a Beállítások ablakban válassz szerződésmappát; lehet meghajtóbetűjeles vagy UNC-útvonal is.
 
 A **Szkennelések feldolgozása** oldalon adj hozzá több PDF-et, MSG-t vagy EML-t. A valódi fájlok és a klasszikus Windows Outlook virtuális PDF-mellékletei, valamint teljes e-mailjei is behúzhatók. Több e-mailből automatikusan kiemeli a PDF-mellékleteket, és a meglévő várólistához adja őket. A felismerés sorban, háttérszálon fut, minden szükséges oldalt megvizsgál. Ellenőrizd a NEAK-kódot, nevet, rövid nevet, mellékletet és a hatályosságot, majd jelöld az ellenőrzést és válaszd a mentést. A rövid nevek a Beállítások / Szolgáltatói törzsadatok menüben szerkeszthetők, és sikeres mentéskor is megjegyzi őket a program.
 
@@ -28,7 +28,7 @@ python run.py
 
 Forrásból futtatáshoz Tesseract 5 és `hun`, `eng` nyelvi adatok szükségesek. A `TESSDATA_PREFIX` támogatott. Az alkalmazás induláskor maximált, a panelarányokat és az utolsó nézetet megjegyzi.
 
-Windows PowerShell: `./scripts/build-windows.ps1`. A szkript ellenőrzött SHA-256 alapján letölti az OCR telepítőjét, helyi ideiglenes könyvtárba bontja ki a telepítő futtatása nélkül, hozzáadja a magyar nyelvet, futtatja a teszteket, majd PyInstaller one-directory EXE-csomagot és ZIP-et készít. A csomagolt EXE saját szintetikus OCR/PDF/SQLite funkcionális tesztet futtat `--self-test` kapcsolóval. A GitHub Actions valódi Windows-runneren hajtja végre ugyanezt. `v0.1.1` tag push esetén a ZIP-et Release-hez csatolja.
+Windows PowerShell: `./scripts/build-windows.ps1`. A szkript ellenőrzött SHA-256 alapján letölti az OCR telepítőjét, helyi ideiglenes könyvtárba bontja ki a telepítő futtatása nélkül, hozzáadja a magyar nyelvet, futtatja a teszteket, majd PyInstaller one-directory EXE-csomagot és ZIP-et készít. A csomagolt EXE saját szintetikus OCR/PDF/SQLite funkcionális tesztet futtat `--self-test` kapcsolóval. A GitHub Actions valódi Windows-runneren hajtja végre ugyanezt. `v0.1.2` tag push esetén a ZIP-et Release-hez csatolja.
 
 ## Korlátok és ellenőrzések
 
@@ -37,3 +37,14 @@ A Windows 10 1607 kompatibilitás **nem igazolt**, lásd [COMPATIBILITY](docs/CO
 Privát mintákat, dokumentumokat, OCR-kimeneteket vagy helyi adatbázist tilos commitolni. Az automatizált tesztek szintetikusak. A specifikáció három név szerinti mintája nincs a feltöltött öt PDF között, ezért azokra dokumentumalapú elfogadás nem állítható.
 
 Technológia: Qt 5/PyQt5 a régi Windows célplatform és a natív asztali felület miatt; PDFium a beépített rendereléshez; Tesseract a helyi magyar OCR-hez; SQLite a felhasználónkénti nyilvántartáshoz. Licencek: [THIRD_PARTY](docs/THIRD_PARTY.md).
+
+
+## v0.1.2 újdonságok
+
+Az OCR a táblázatos és több sorba tördelt mezőket is értelmezi; oldalanként keresi a 0/90/180/270 fokos helyes tájolást. Az értelmezhető mezők alapján választ, nem a felismert szöveg hosszából. Megbízható, helyesen álló oldalon egy OCR elegendő. A hibás oldal mellett a többi oldal adatai kézzel javíthatók maradnak.
+
+A betekintőben a **Forgatás balra/jobbra** mindig az aktuális oldalt módosítja. Feldolgozás közben a forrás változatlan: a **Forgatás mentése** jelzi, hogy a tájolást a végleges másolat mentése fogja rögzíteni. Szerződéstári PDF esetén külön felülírási megerősítés kell; a program ellenőrzött ideiglenes PDF-et készít és csak utána cseréli le az eredetit. A képtartalmat nem raszterizálja újra. A forgatások dokumentumonként, oldalanként megmaradnak az aktuális munkamenetben; a feldolgozás alatti beállítások csak a végleges másolattal kerülnek tartósan a PDF-be.
+
+A célmappa csak a **Beállítások → Beállítások…** ablakban változtatható. Ugyanitt állítható az alapnézet, az OCR automatikus tájolásfelismerése és a felismert tájolás betekintőbeli alkalmazása. Ha ez utóbbi ki van kapcsolva, az automatikus ajánlás nem kerül sem a nézetbe, sem a végleges másolatba; a kézi forgatás továbbra is érvényes. A főoldalon az útvonal csak tájékoztató, teljes tartalma tooltipben látszik. Minden beállítás a meglévő felhasználói SQLite-adatbázisban tárolódik.
+
+Felismerés alatt kék, félkövér, finoman pulzáló **Feldolgozás** állapot látható; utána Felismerve / Ellenőrizendő / Feldolgozási hiba. A teljes fül- és panelcímekhez a méretezés javult; keskeny betekintőben az eszköztár nyílmenüje kínálja a további műveleteket. Tesztek és korlátok: [v0.1.2 jegyzőkönyv](docs/V012.md).

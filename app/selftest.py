@@ -38,7 +38,7 @@ def run():
         window.store.provider('4321', 'Minta Kft.', 'Minta')
         window.add_files([str(source)])
         deadline = time.monotonic() + 120
-        while (window.items[str(source)]['state'] == 'Várakozik' or any(job.isRunning() for job in window.jobs)) and time.monotonic() < deadline:
+        while (window.items[str(source)]['state'] in ('Várakozik','Feldolgozás') or any(job.isRunning() for job in window.jobs)) and time.monotonic() < deadline:
             app.processEvents()
             time.sleep(.02)
         assert window.items[str(source)]['state'] == 'Felismerve'
@@ -67,13 +67,15 @@ def run():
                 app.processEvents()
                 if (window.queue.count() == previous + len(extra) and not window.pending
                         and not any(job.isRunning() for job in window.jobs)
-                        and all(item['state'] != 'Várakozik' for item in window.items.values())):
+                        and all(item['state'] not in ('Várakozik','Feldolgozás') for item in window.items.values())):
                     break
                 time.sleep(.02)
             assert window.queue.count() == previous + len(extra), 'OLE files not appended'
             assert all(item['data'].code == '4321' for item in window.items.values())
             assert all(item['state'] in ('Felismerve', 'Kész') for item in window.items.values())
             print('PASS: packaged native OLE transfers append to existing queue and run OCR')
+        from .rotation_smoke import run as rotation_smoke
+        rotation_smoke(root,font)
         window.close()
         print('PASS: bundled OCR hun+eng, extraction, Qt, PDF preview, copy, SQLite, browse')
     return 0

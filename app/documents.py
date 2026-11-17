@@ -6,6 +6,9 @@ import os
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass, field
+from .core import extract_contract
+from .pdf_ops import PDF_LOCK
 import pypdfium2 as pdfium
 
 
@@ -20,33 +23,109 @@ def tesseract_command():
     return str(bundled) if bundled.exists() else 'tesseract'
 
 
-def recognize(path):
+@dataclass
+class Recognition:
+    text: str
+    rotations: dict = field(default_factory=dict)
+    warnings: list = field(default_factory=list)
+
+
+def run_ocr(image, psm=3):
+    with tempfile.TemporaryDirectory(prefix='neak-ocr-') as folder:
+        imagepath = Path(folder) / 'page.png'
+        image.save(imagepath)
+        command = [tesseract_command(), str(imagepath), 'stdout', '-l', 'hun+eng', '--psm', str(psm)]
+        if (resource_dir() / 'ocr' / 'tessdata').exists():
+            command += ['--tessdata-dir', str(resource_dir() / 'ocr' / 'tessdata')]
+        completed = subprocess.run(command, capture_output=True, timeout=180,
+                                   creationflags=0x08000000 if os.name == 'nt' else 0)
+        if completed.returncode:
+            raise RuntimeError('OCR-hiba: ' + completed.stderr.decode('utf-8', errors='replace')[-1500:])
+        return completed.stdout.decode('utf-8', errors='replace')
+
+
+def field_score(text):
+    data = extract_contract(text)
+    return sum(bool(getattr(data, key)) for key in ('code', 'provider', 'annex', 'date'))
+
+
+def orient_image(image, automatic=True):
+    extrema = image.convert('L').getextrema()
+    if extrema[0] == extrema[1] and extrema[0] >= 250:
+        return '', 0, ''
+    # Fast path: an upright page with all four labelled fields needs one OCR.
+    candidates = []
+    for angle in ((0, 90, 270, 180) if automatic else (0,)):
+        oriented = image if angle == 0 else image.rotate(-angle, expand=True)
+        # PSM 3 can internally read vertical text without reporting rotation.
+        # PSM 6 keeps the tested angle meaningful; use layout mode 3 only later.
+        text = run_ocr(oriented, psm=6)
+        score = field_score(text)
+        candidates.append((score, angle, text))
+        if score == 4:
+            break
+    # Field count, not random OCR character count, determines orientation.
+    best = max(candidates, key=lambda item: item[0])
+    # Tables can need a different segmentation, only retry a weak best candidate.
+    if best[0] < 4:
+        oriented = image if best[1] == 0 else image.rotate(-best[1], expand=True)
+        alternative = run_ocr(oriented, psm=3)
+        if field_score(alternative) > best[0]:
+            best = (field_score(alternative), best[1], alternative)
+    warning = ''
+    if automatic and best[0] == 0:
+        # No readable fields: do not arbitrarily rotate covers/stamps.
+        best = candidates[0]
+    elif automatic and best[1] and sum(item[0] == best[0] for item in candidates) > 1:
+        warning = 'Az oldal tájolása nem egyértelmű; ellenőrizd a betekintőben.'
+    return best[2], best[1], warning
+
+
+def recognize(path, auto_orient=True, detailed=False, initial_rotations=None):
+    result = Recognition('')
+    initial_rotations = initial_rotations or {}
     pages = []
-    document = pdfium.PdfDocument(str(path))
+    with PDF_LOCK:
+        document = pdfium.PdfDocument(Path(path).read_bytes())
+        count = len(document)
     try:
-        for page in document:
-            textpage = page.get_textpage()
-            text = textpage.get_text_range()
-            textpage.close()
-            # OCR every page lacking usable text, including stamp-only cover pages.
-            if len(text.strip()) < 80 or 'hatály' not in text.lower():
-                image = page.render(scale=3).to_pil()
-                with tempfile.TemporaryDirectory(prefix='neak-ocr-') as folder:
-                    imagepath = Path(folder) / 'page.png'
-                    image.save(imagepath)
-                    command = [tesseract_command(), str(imagepath), 'stdout', '-l', 'hun+eng', '--psm', '3']
-                    if (resource_dir() / 'ocr' / 'tessdata').exists():
-                        command += ['--tessdata-dir', str(resource_dir() / 'ocr' / 'tessdata')]
-                    completed = subprocess.run(command, capture_output=True, timeout=180,
-                                               creationflags=0x08000000 if os.name == 'nt' else 0)
-                    if completed.returncode:
-                        raise RuntimeError('OCR-hiba: ' + completed.stderr.decode('utf-8', errors='replace')[-1500:])
-                    text += '\n' + completed.stdout.decode('utf-8', errors='replace')
-            pages.append(text)
-            page.close()
+        for index in range(count):
+            try:
+                with PDF_LOCK:
+                    page = document[index]
+                    try:
+                        textpage = page.get_textpage()
+                        try:
+                            embedded = textpage.get_text_range()
+                        finally:
+                            textpage.close()
+                        initial = initial_rotations.get(index, 0)
+                        if field_score(embedded) == 4 and not auto_orient:
+                            image = None
+                        else:
+                            image = page.render(scale=2.5, rotation=initial).to_pil().copy()
+                    finally:
+                        page.close()
+                if image is None:
+                    text, angle, warning = embedded, 0, ''
+                else:
+                    text, angle, warning = orient_image(image, auto_orient)
+                    # Preserve useful embedded values if OCR has fewer fields.
+                    if field_score(embedded) > field_score(text):
+                        text = embedded
+                pages.append(text)
+                result.rotations[index] = (initial + angle) % 360
+                if warning:
+                    result.warnings.append(f'{index+1}. oldal: {warning}')
+            except Exception as error:
+                # Other pages and their valid fields remain available for correction.
+                pages.append('')
+                result.warnings.append(f'{index+1}. oldal feldolgozási hibája: {error}')
     finally:
-        document.close()
-    return '\n'.join(pages)
+        with PDF_LOCK:
+            document.close()
+    result.text = '\n'.join(pages)
+    return result if detailed else result.text
 
 
 def import_files(paths, staging):

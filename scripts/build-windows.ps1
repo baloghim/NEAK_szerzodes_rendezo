@@ -33,9 +33,9 @@ if ($Stage -in @('all','package')) {
 if ($Stage -in @('all','verify')) {
     $exe = 'dist/OtthonapolasiSzerzodeskezelo/OtthonapolasiSzerzodeskezelo.exe'
     $smoke = Start-Process $exe -ArgumentList '--self-test' -PassThru
-    if (-not $smoke.WaitForExit(180000)) { $smoke.Kill(); throw 'Packaged executable timed out' }
+    if (-not $smoke.WaitForExit(360000)) { $smoke.Kill(); throw 'Packaged executable timed out' }
     if ($smoke.ExitCode -ne 0) { Get-Content self-test-result.json -ErrorAction SilentlyContinue; throw 'Packaged executable smoke test failed' }
     Get-Content self-test-result.json
-    Copy-Item README.md,LICENSE,docs/COMPATIBILITY.md,docs/THIRD_PARTY.md,docs/OUTLOOK.md -Destination dist/OtthonapolasiSzerzodeskezelo
-    Compress-Archive -Path 'dist/OtthonapolasiSzerzodeskezelo' -DestinationPath 'dist/OtthonapolasiSzerzodeskezelo-v0.1.1-windows-x64.zip' -Force
+    Copy-Item README.md,LICENSE,docs/COMPATIBILITY.md,docs/THIRD_PARTY.md,docs/OUTLOOK.md,docs/V012.md,CHANGELOG.md -Destination dist/OtthonapolasiSzerzodeskezelo
+    Compress-Archive -Path 'dist/OtthonapolasiSzerzodeskezelo' -DestinationPath 'dist/OtthonapolasiSzerzodeskezelo-v0.1.2-windows-x64.zip' -Force
 }

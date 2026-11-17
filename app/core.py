@@ -59,43 +59,70 @@ def fold(text):
 
 
 def extract_contract(text, providers=None):
-    """Only labelled dates qualify; signatures and arrival stamps are ignored."""
-    text = text.replace('\r', '')
+    """Labelled values across lines/tables; unrelated signature dates never qualify."""
+    text = unicodedata.normalize('NFC', text.replace('\r', ''))
     plain = fold(text)
-    patterns = {
-        'code': r'(?:szolgaltato\s+)?neak\s*[- ]?\s*kod(?:ja)?\s*[:：]?\s*([a-z0-9]{4})\b',
-        'annex': r'\bix\s*[/.-]\s*([123])\s*\.?',
-        'date': r'hatalyos(?:sag(?:\s+kezdete)?)?\s*[:：]?\s*(\d{4}\s*[.\-/]\s*\d{1,2}\s*[.\-/]\s*\d{1,2})',
-    }
+    candidates = {key: [] for key in ('code', 'provider', 'annex', 'date')}
+    code_label = r'(?:szolgaltato\s+)?neak\s*[- ]?\s*kod(?:ja)?'
+    date_label = r'hatalyos(?:sag(?:\s+kezdete)?)?'
+    candidates['code'] += re.findall(code_label + r'\s*[:：|]?\s*([a-z0-9]{4})\b', plain)
+    candidates['annex'] += re.findall(r'\b(?:ix|1x|lx)\s*[/.-]\s*(iii|ii|[123il])\s*\.?\b', plain)
+    candidates['date'] += re.findall(date_label + r'\s*[:：|]?\s*(\d{4}\s*[.\-/]\s*\d{1,2}\s*[.\-/]\s*\d{1,2})', plain)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    labels = r'(?:szolgaltato\s+neve|'+code_label+'|'+date_label+r'|szekhely|adoszam|mukodesi)'
+    for index, line in enumerate(lines):
+        normalized = fold(line)
+        match = re.search(r'szolgaltato\s+neve\s*[:：|]?\s*', normalized)
+        if match:
+            value = line[match.end():].strip(' :：|\t')
+            if not value and index+1 < len(lines):
+                value = lines[index+1].strip(' :：|\t')
+            # A following table header is not the provider's name.
+            if value and not re.match(labels, fold(value)):
+                value = re.split(r'\s*[|\t]\s*', value)[0].strip()
+                stop = re.search(r'\s+(?:'+labels+r')\s*:', fold(value))
+                candidates['provider'].append(value[:stop.start()].strip() if stop else value)
+        # Explicit table columns: labels in one row, values in the next.
+        cells = [part.strip() for part in re.split(r'[|\t]| {3,}', line) if part.strip()]
+        if len(cells) > 1 and index+1 < len(lines):
+            values = [part.strip() for part in re.split(r'[|\t]| {3,}', lines[index+1]) if part.strip()]
+            header_count = sum(bool(re.fullmatch('(?:'+code_label+'|szolgaltato\\s+neve|'+date_label+')\\s*:?',fold(cell))) for cell in cells)
+            if len(cells) == len(values) and header_count >= 2:
+                for label, value in zip(cells, values):
+                    label = fold(label)
+                    key = ('code' if re.fullmatch(code_label+r'\s*:?',label) else
+                           'provider' if re.fullmatch(r'szolgaltato\s+neve\s*:?',label) else
+                           'date' if re.fullmatch(date_label+r'\s*:?',label) else None)
+                    if key:
+                        candidates[key].append(value)
     result = Contract()
-    for key, pattern in patterns.items():
-        values = set(re.findall(pattern, plain))
-        if key == 'date':
-            normalized = set()
-            for value in values:
+    for key, values in candidates.items():
+        normalized = {}
+        for value in values:
+            if key == 'code':
+                value = value.upper().strip()
+                if not re.fullmatch(r'[A-Z0-9]{4}', value):
+                    continue
+            elif key == 'annex':
+                value = 'IX-' + {'i':'1','l':'1','ii':'2','iii':'3'}.get(value, value)
+            elif key == 'date':
                 parts = re.findall(r'\d+', value)
                 try:
-                    normalized.add(datetime(*map(int, parts)).strftime('%Y%m%d'))
+                    if len(parts) != 3:
+                        raise ValueError()
+                    value = datetime(*map(int, parts)).strftime('%Y%m%d')
                 except ValueError:
                     result.warnings.append('Érvénytelen hatályossági dátum.')
-            values = normalized
-        if len(values) == 1:
-            value = next(iter(values))
-            setattr(result, key, 'IX-' + value if key == 'annex' else value.upper())
+                    continue
+            else:
+                value = re.sub(r'\s+', ' ', value).strip()
+                if not value:
+                    continue
+            normalized[value.casefold()] = value
+        if len(normalized) == 1:
+            setattr(result, key, next(iter(normalized.values())))
         else:
             result.warnings.append(f'Hiányzó vagy ellentmondó adat: {key}.')
-    names = []
-    for line in text.splitlines():
-        m = re.search(r'szolgaltato\s+neve\s*:\s*(.+)', fold(line))
-        if m:
-            # Accent folding preserves character offsets except unusual decomposed input.
-            name = line[m.start(1):].strip()
-            if name and name not in names:
-                names.append(name)
-    if len(names) == 1:
-        result.provider = names[0]
-    else:
-        result.warnings.append('A szolgáltató neve hiányzik vagy ellentmondó.')
     known = (providers or {}).get(result.code)
     result.short = known if known else re.sub(r'\s+(?:Bt|Kft|Zrt)\.?$', '', result.provider, flags=re.I)
     if not known:

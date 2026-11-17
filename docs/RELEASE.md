@@ -1,9 +1,7 @@
-Klasszikus Outlook drag-and-drop javítás, v0.1.1.
+Otthonápolási szerződéskezelő v0.1.2.
 
-Natív Windows OLE IDropTarget kezeli a virtuális PDF-mellékleteket és a teljes e-maileket. Több elem egyszerre átvehető; FileGroupDescriptorW/ANSI, indexelt FileContents, HGLOBAL, IStream és IStorage támogatott. Az e-mailek PDF-mellékletei a meglévő OCR-várólistába kerülnek. A korábbi PDF/MSG/EML import és a felületi elrendezés megmaradt. A források nem módosulnak.
+Rugalmasabb IX/1–IX/3 OCR, oldalankénti automatikus tájolás; kézi balra/jobbra forgatás és biztonságos PDF-metaadat mentés. Teljes fül- és panelcímek, kék félkövér pulzáló feldolgozási állapot, külön beállítási ablak és tájékoztató célmappa. A korábbi Outlook/PDF/MSG/EML import és ePénz-nyilvántartás megmaradt.
 
-A teljes ZIP-et bontsd ki, majd indítsd az OtthonapolasiSzerzodeskezelo.exe fájlt. Nincs szükség külön Python vagy Tesseract telepítésére. Az Outlookot és az alkalmazást is normál jogosultsággal indítsd: eltérő integritási szinten a Windows blokkolhatja a behúzást.
+A teljes ZIP-et bontsd ki új mappába, és indítsd az OtthonapolasiSzerzodeskezelo.exe fájlt. Külön Python vagy Tesseract nem szükséges. A meglévő felhasználói SQLite-beállításokat használja.
 
-Tényleges klasszikus Outlookkal és Windows 10 1607-en végzett teszt még nem igazolt. A natív Windows és a csomagolt EXE szintetikus ellenőrzéseinek részletei: docs/OUTLOOK.md a forrásban és a ZIP-ben.
-
-Windows Server 2022-n mind a 26 automatizált teszt, a csomagolt EXE natív OLE → várólista → OCR funkcionális tesztje, az asInvoker-manifest ellenőrzése és az SMB/UNC mentési regressziós teszt sikeres. Ezek szintetikus adatokkal végzett ellenőrzések, tényleges Outlookot nem futtattak.
+Windows 10 x64 1607 a célplatform; tényleges 1607-en végzett teszt továbbra sem igazolt. Részletes működés, tesztek és korlátok: V012.md a ZIP-ben, docs/V012.md a forrásban. A valódi klasszikus Outlook célgépes próbái az OUTLOOK.md dokumentumban szerepelnek.
