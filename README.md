@@ -1,4 +1,4 @@
-# Otthonápolási szerződéskezelő v0.1.3
+# Otthonápolási szerződéskezelő v0.2.0
 
 Magyar nyelvű, offline Windows asztali alkalmazás a szkennelt otthonápolási IX/1–IX/3 mellékletek feldolgozására. A dokumentumok és az OCR-szövegek nem kerülnek külső szolgáltatásba.
 
@@ -59,3 +59,16 @@ Jobb kattintás a szerződéslista egyik sorára: **Megjelölés feltöltöttké
 A **Lista ürítése** az egész feldolgozási adatlapot és előnézetet alaphelyzetbe állítja, a mentést letiltja. A célmappa, a beállítások, a törzsadatok, a korábban mentett PDF-ek és az ePénz-állapotok megmaradnak. A háttérben már futó OCR befejezheti a munkáját, de eredménye érvénytelen: sem a kiürített lapot, sem ugyanannak a fájlnak az újraimportált tételét nem írhatja felül. A program nem állít le erőszakkal natív PDF/OCR műveletet.
 
 Tesztjegyzőkönyv: [v0.1.3](docs/V013.md). A grafikus arculat és a GUI-keretrendszer változatlan.
+
+
+## v0.2.0 – Keramik / Crystal arculat
+
+A meglévő Qt 5 alkalmazás központi, kék–ezüst témát kapott: fényes színátmenetes panelcímek, domború gombok, kék kijelölések, színes állapotok és ikonos felső eszköztár. A felső és alsó gombok közös QAction műveleteket használnak, és az aktív oldal/kijelölés szerint engedélyeződnek. A PDF-betekintő, mindkét fő oldal, a menük, párbeszédablakok és állapotsor ugyanazt a vizuális rendszert használják. Keskeny ablaknál az eszköztár nyílmenüjéből is elérhetők az elférő feliratok mellett a további műveletek.
+
+A műveleti ikonok valódi Everaldo Crystal Clear PNG-k; a PDF-ikon kizárólag a régi KDE Crystal SVG készletből származik, ellenőrzött forrással és saját SVG-jével. Nem Oxygen. A pontos és a hiányzó motívum helyett választott közeli megfelelők is tételesen szerepelnek az [ikonjegyzékben](docs/ICON_MAPPING.md). A licencnyilatkozatokat és az eredeti ikonállományokat is tartalmazza a csomag: [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES.md).
+
+A felhasználói logóból készült áttetsző, hétméretes ICO az EXE-be is beépül. A build a PE ikon-erőforrásokat bájtszinten összeveti az ICO-val; az alkalmazás saját ablak-/tálcaikonját és az asInvoker manifestet is ellenőrzi. A Windows natív címsorának színét az operációs rendszer beállításai szabályozzák; nem használunk Windows 11-et igénylő címsor API-t.
+
+Valódi Qt-mentések: [feldolgozás](docs/actual-scan.png), [tallózás](docs/actual-browse.png), [összehasonlító lap](docs/ui-comparison.png), [ikonok és forrásuk](docs/icon-comparison.png). Ezek elkülönített, programból készített szintetikus QA-adatokkal készültek; az alkalmazás normál indításkor nem hoz létre mintaszerződést vagy kitalált rekordot. Az összehasonlító lap bal oldala a csatolt képek szöveges vizuális összefoglalója; az üzenetbe ágyazott eredeti referencia-képfájlok bájtjai nem voltak hozzáférhetők a munkatérben. Az alkalmazást mutató részek változatlan, tényleges képernyőmentések.
+
+A Windows build 100%, 125% és 150% skálán, normál és maximált ablakban is rendereli mindkét oldalt; a képek a visual-checks build-artifactban elérhetők. Részletek: [v0.2.0 ellenőrzések](docs/V020.md). Az OCR, Outlook OLE, PDF-mentés/forgatás, fájlnévkezelés, SQLite-séma, évszűrés és korábbi beállítások változatlanok; új függőség nincs. Windows 10 1607-en tényleges teszt továbbra sem igazolt.

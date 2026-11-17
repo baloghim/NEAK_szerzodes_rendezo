@@ -1,0 +1,553 @@
+{
+  "add": {
+    "label": "Hozzáadás",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/edit_add.png",
+    "file": "assets/icons/crystal-clear/actions/edit_add.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/edit_add.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "A készletben a zöld plusz önálló ikon; nem állítjuk, hogy dokumentum-plusz eredeti fájl.",
+    "sha256": "c888125e30ad7f9727e52b3f845cb6008cdea7caf38d45f78ded8932253890cc"
+  },
+  "remove": {
+    "label": "Törlés",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/button_cancel.png",
+    "file": "assets/icons/crystal-clear/actions/button_cancel.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/button_cancel.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "c77c6be30821fec9866238d0d80c4b4626dfe8f9a7a19c74155d4eb88bbafd6c"
+  },
+  "clear": {
+    "label": "Lista ürítése",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "filesystems/trashcan_empty.png",
+    "file": "assets/icons/crystal-clear/filesystems/trashcan_empty.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/filesystems/trashcan_empty.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "A megvizsgált eredeti készletben nincs seprű: üres lomtár azonos készletből származó takarítási megfelelő. Nem töröl forrásfájlt.",
+    "sha256": "8fafafaff403f3f67ada7d70a40c121bcd4cba5bf9b76030eca94eb831c0eaf8"
+  },
+  "retry": {
+    "label": "Felismerés újra",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/viewmag.png",
+    "file": "assets/icons/crystal-clear/actions/viewmag.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/viewmag.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Az eredeti nagyító ezüst/kékes üvegű.",
+    "sha256": "23cb1bdca96e0edf5323d98911216bf9d88a6ba0efaa5fbde7a6c41187a9ec41"
+  },
+  "skip": {
+    "label": "Kihagyás",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/2rightarrow.png",
+    "file": "assets/icons/crystal-clear/actions/2rightarrow.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/2rightarrow.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "0dbd85a22bb0e5010aef058e68a4a1f7af2b77ebbfeee5667945a1c519aaa232"
+  },
+  "save": {
+    "label": "Mentés és következő",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "devices/floppy_unmount.png",
+    "file": "assets/icons/crystal-clear/devices/floppy_unmount.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/devices/floppy_unmount.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Eredeti floppy, zöld nyíl nélküli közeli megfelelő.",
+    "sha256": "1d63e4f796c327fbf3a5c891a415a8511654503ec8ba0120101df6d22280dc4c"
+  },
+  "browse": {
+    "label": "Szerződések tallózása",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "filesystems/folder_yellow.png",
+    "file": "assets/icons/crystal-clear/filesystems/folder_yellow.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/filesystems/folder_yellow.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Eredeti sárga mappa, nagyító nélküli közeli megfelelő.",
+    "sha256": "cdabb2024863130f733e8c3b0919fa74e04882e1f745084784492046e9e830f3"
+  },
+  "settings": {
+    "label": "Beállítások",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "apps/Service_Manager.png",
+    "file": "assets/icons/crystal-clear/apps/Service_Manager.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/apps/Service_Manager.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "3622386a2847472ac896d2f05cdf4daaae5484932484ed912b237ad2523f88f3"
+  },
+  "help": {
+    "label": "Súgó / Névjegy",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/info.png",
+    "file": "assets/icons/crystal-clear/actions/info.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/info.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "42301f927dfae48ee856d7e6fb94d80a9cee87344f8343d42350ab1337da485f"
+  },
+  "refresh": {
+    "label": "Frissítés",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/reload.png",
+    "file": "assets/icons/crystal-clear/actions/reload.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/reload.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "A Crystal Clear eredeti frissítő nyila narancs színű; nem színeztük át.",
+    "sha256": "e2cf61c35186b2c4a98383dfa6469d593ae5ae1a5c226608f5819e6ca0619ac3"
+  },
+  "filter": {
+    "label": "Szűrés",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/view_choose.png",
+    "file": "assets/icons/crystal-clear/actions/view_choose.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/view_choose.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "A megvizsgált készletben nincs tölcsér; választópanel azonos készletből származó közeli megfelelő.",
+    "sha256": "f0fd1e76f330ff317f1350eb5b975d1086663f3c29e7017c80ad617b17b9954c"
+  },
+  "reset_filter": {
+    "label": "Szűrés törlése",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/button_cancel.png",
+    "file": "assets/icons/crystal-clear/actions/button_cancel.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/button_cancel.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "c77c6be30821fec9866238d0d80c4b4626dfe8f9a7a19c74155d4eb88bbafd6c"
+  },
+  "rotate_left": {
+    "label": "Forgatás balra",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/1leftarrow.png",
+    "file": "assets/icons/crystal-clear/actions/1leftarrow.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/1leftarrow.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Balra mutató kék nyíl; ívelt forgatásnyíl nem található ebben a kiadásban.",
+    "sha256": "02426e76d1b12ba271a38f83fa5068b0a72329078393b0bef2c76c22208de66d"
+  },
+  "rotate_right": {
+    "label": "Forgatás jobbra",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/loopnone.png",
+    "file": "assets/icons/crystal-clear/actions/loopnone.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/loopnone.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Jobbra mutató kék nyíl, ívelt forgatásnyíl helyett.",
+    "sha256": "29afcbbb16466880b23c90dd851aef3ca77331781659fbcc3dafc649b477563e"
+  },
+  "save_rotation": {
+    "label": "Forgatás mentése",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "devices/floppy_unmount.png",
+    "file": "assets/icons/crystal-clear/devices/floppy_unmount.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/devices/floppy_unmount.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "1d63e4f796c327fbf3a5c891a415a8511654503ec8ba0120101df6d22280dc4c"
+  },
+  "folder": {
+    "label": "Mappa megnyitása",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "filesystems/folder_grey_open.png",
+    "file": "assets/icons/crystal-clear/filesystems/folder_grey_open.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/filesystems/folder_grey_open.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Az eredeti nyitott mappa ezüst színű; a sárga változat zárt.",
+    "sha256": "f811c563ca5e31636304f16bd3cae43b760c561bc4a5704f43da2e427a7171fd"
+  },
+  "processing": {
+    "label": "Feldolgozás",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "apps/Service_Manager.png",
+    "file": "assets/icons/crystal-clear/apps/Service_Manager.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/apps/Service_Manager.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "3622386a2847472ac896d2f05cdf4daaae5484932484ed912b237ad2523f88f3"
+  },
+  "ready": {
+    "label": "Sikeres / kész",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/apply.png",
+    "file": "assets/icons/crystal-clear/actions/apply.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/apply.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "86073c76afd3de44e07281c6f5667535462298cd06fd7da319bd29d66f34e1ac"
+  },
+  "warning": {
+    "label": "Figyelmeztetés",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "apps/error.png",
+    "file": "assets/icons/crystal-clear/apps/error.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/apps/error.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Az eredeti fájlnév error.png, a tényleges motívum sárga figyelmeztető háromszög.",
+    "sha256": "fe1234a27371387b708266a0ab732120be57035ee91775aa44cfa76897b0df71"
+  },
+  "error": {
+    "label": "Hiba",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/button_cancel.png",
+    "file": "assets/icons/crystal-clear/actions/button_cancel.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/button_cancel.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "c77c6be30821fec9866238d0d80c4b4626dfe8f9a7a19c74155d4eb88bbafd6c"
+  },
+  "waiting": {
+    "label": "Várakozik",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "apps/karm.png",
+    "file": "assets/icons/crystal-clear/apps/karm.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/apps/karm.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "511343eef4bbf71015d1cbbec0f7e44f7192654f96fd85ceb133402b85cd673c"
+  },
+  "unknown": {
+    "label": "Ismeretlen",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/db_status.png",
+    "file": "assets/icons/crystal-clear/actions/db_status.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/db_status.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "0cd044dcf085a570b418995cd5d104b196758e29175fbfb853ccbb15755976c6"
+  },
+  "document": {
+    "label": "Felismert adatok",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/view_detailed.png",
+    "file": "assets/icons/crystal-clear/actions/view_detailed.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/view_detailed.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "d64e716e6ff11f781436ac986d40729edef8a2003ecba2b74107b21fd36ea2d2"
+  },
+  "previous": {
+    "label": "Előző oldal",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/1leftarrow.png",
+    "file": "assets/icons/crystal-clear/actions/1leftarrow.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/1leftarrow.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "02426e76d1b12ba271a38f83fa5068b0a72329078393b0bef2c76c22208de66d"
+  },
+  "next": {
+    "label": "Következő oldal",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/loopnone.png",
+    "file": "assets/icons/crystal-clear/actions/loopnone.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/loopnone.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "29afcbbb16466880b23c90dd851aef3ca77331781659fbcc3dafc649b477563e"
+  },
+  "zoom_in": {
+    "label": "Nagyítás",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/viewmag+.png",
+    "file": "assets/icons/crystal-clear/actions/viewmag+.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/viewmag+.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "bab5afa54ab34aa5dae23370b62834b9682ab3d4e57c380be47dfde1613aade1"
+  },
+  "zoom_out": {
+    "label": "Kicsinyítés",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/viewmag-.png",
+    "file": "assets/icons/crystal-clear/actions/viewmag-.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/viewmag-.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "192852eb4ee7405bb9efcb7e4b07076f5b172e7a920f372defe44cad41795bb5"
+  },
+  "fit": {
+    "label": "Oldalszélesség",
+    "set": "Crystal Clear",
+    "author": "Everaldo Coelho",
+    "original": "actions/viewmagfit.png",
+    "file": "assets/icons/crystal-clear/actions/viewmagfit.png",
+    "source": "https://github.com/niko-yanev/crystal-clear/blob/46e58e37e175ff22b6b11fd0e5dcbaeb571bfaa1/actions/viewmagfit.png",
+    "license": "LGPL-2.1-or-later",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "",
+    "sha256": "ce6725fa274007ffecc73d1e16d6bf386e1cd831e223b82f8047055744e5bf88"
+  },
+  "pdf": {
+    "label": "PDF-dokumentum / megnyitás / panel",
+    "set": "KDE Crystal SVG",
+    "author": "KDE Artists (Everaldo Coelho és közreműködők)",
+    "original": "pics/crystalsvg/cr128-mime-pdf.png; crsc-mime-pdf.svgz",
+    "file": "assets/icons/crystalsvg/cr128-mime-pdf.png",
+    "source": "https://github.com/Fat-Zer/tdelibs/blob/80a04dbf8a7f10fd9d78fdf85374fcf1d4ab93e9/pics/crystalsvg/cr128-mime-pdf.png",
+    "license": "LGPL-2.1-only + CrystalSVG artwork add-on",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ],
+    "source_pixels": 128,
+    "note": "Nem Oxygen. Az eredeti SVG-forrás és a külön CrystalSVG licencnyilatkozat is megőrizve.",
+    "sha256": "6738c81eb20b475c8445b0f68d02e82166b4b71a3ac694dcd4b3d468d33492c8"
+  }
+}

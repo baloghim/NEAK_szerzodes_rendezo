@@ -1,10 +1,11 @@
-Otthonápolási szerződéskezelő v0.1.3 – funkcionális frissítés, változatlan arculattal.
+Otthonápolási szerződéskezelő v0.2.0 – Keramik / Crystal arculati frissítés.
 
-- Aktuális évtől 2024-ig automatikusan frissülő évszűrő, Összes év alapértékkel; a meglévő szűrőkkel együtt működik.
-- Hatályosság kezdete oszlop ÉÉÉÉ.HH.NN. formátumban, valódi dátum szerinti rendezéssel.
-- Jobb gombos, egyetlen sorra vonatkozó ePénz-állapotváltás és tartós feltöltési időpont.
-- Teljes adatlap-/előnézet-reset listaürítéskor, késői OCR-válaszok biztonságos érvénytelenítésével. A célmappa, beállítások, törzsadatok, mentett PDF-ek és állapotok megmaradnak.
+Klasszikus kék–ezüst Qt téma, fényes panelcímek, domború gombok, színes állapotok és kontextusfüggő felső eszköztár. Valódi Everaldo Crystal Clear műveleti és KDE Crystal SVG PDF-ikonok, forrás- és licencjegyzékkel. Egyedi áttetsző, hétméretes alkalmazásikon, ténylegesen az EXE-be építve.
 
-A teljes ZIP-et bontsd ki új mappába, és indítsd az OtthonapolasiSzerzodeskezelo.exe fájlt. Külön Python vagy OCR telepítése nem szükséges. Az alkalmazás a meglévő felhasználói SQLite-adatbázist használja.
+Az OCR, Outlook-import, PDF-forgatás/mentés, fájlnévkezelés, évszűrés, SQLite-séma és meglévő beállítások megmaradtak. Új függőség nincs. A felső és alsó gombok ugyanazokat a műveleteket használják.
 
-A Windows 10 x64 1607 célplatformon nem történt tényleges teszt. Új függőség nem került a csomagba. Részletes tesztek és korlátok: V013.md a ZIP-ben, docs/V013.md a forrásban. Privát tesztdokumentum nem része a csomagnak.
+A teljes ZIP-et bontsd ki új mappába, majd indítsd az OtthonapolasiSzerzodeskezelo.exe fájlt. Külön Python/OCR telepítése nem szükséges. Az ikonok és licencek az _internal/assets könyvtárban vannak; az ikon-hozzárendelések és a THIRD_PARTY_LICENSES.md is a csomag részei.
+
+A képernyőképek valódi Qt-mentések, szintetikus QA-adatokkal. Az összehasonlító lap referenciaoldala szöveges vizuális összefoglaló: az üzenetbe ágyazott két eredeti képfájl bájtjai nem voltak hozzáférhetők a munkatérben. A pontos motívum helyett használt közeli Crystal Clear ikonok dokumentáltak.
+
+Windows 10 x64 1607-en tényleges teszt továbbra sincs igazolva; a Windows natív címsor és a Shell megjelenése célgépes ellenőrzést is igényel. Részletes tesztek és korlátok: V020.md, ICON_MAPPING.md. Privát tesztfájl nincs a csomagban.

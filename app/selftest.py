@@ -29,6 +29,9 @@ def run():
         store.set_setting('folder', str(root))
         store.db.close()
         window = Window(settings)
+        assert not window.windowIcon().isNull()
+        assert {(size.width(),size.height()) for size in window.windowIcon().availableSizes()}>={(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)}
+        assert all(not action.icon().isNull() for action in window.actions.values())
         if os.name == 'nt':
             assert window.native_drops is not None, window.native_drop_error
         def fail(message):

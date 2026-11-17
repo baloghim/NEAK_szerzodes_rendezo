@@ -11,6 +11,7 @@ import pypdfium2 as pdfium
 from .core import Contract, Store, STATUSES, extract_contract, parse_filename, save_copy, digest, available_years
 from .documents import recognize, import_files
 from .pdf_ops import PDF_LOCK, write_rotated, replace_rotated
+from .theme import apply_theme, icon, application_icon, CrystalPanel, CrystalStatusBar, CrystalHeader, STATE_ICONS
 
 
 class Worker(QtCore.QThread):
@@ -60,25 +61,39 @@ class PathLabel(W.QLabel):
 class QueueDelegate(W.QStyledItemDelegate):
     phase = 0
 
-    def paint(self, painter, option, index):
-        state = index.data(QtCore.Qt.UserRole+1)
-        if state != 'Feldolgozás':
-            return super().paint(painter, option, index)
-        opt = W.QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
-        text = opt.text
-        opt.text = ''
-        style = opt.widget.style() if opt.widget else W.QApplication.style()
-        style.drawControl(W.QStyle.CE_ItemViewItem, opt, painter, opt.widget)
+    def sizeHint(self,option,index):
+        return QtCore.QSize(280,36)
+
+    def paint(self,painter,option,index):
+        state=index.data(QtCore.Qt.UserRole+1) or 'Várakozik'
+        path=index.data(QtCore.Qt.UserRole) or ''
+        opt=W.QStyleOptionViewItem(option);self.initStyleOption(opt,index);opt.text='';opt.icon=QtGui.QIcon()
+        style=opt.widget.style() if opt.widget else W.QApplication.style()
+        style.drawControl(W.QStyle.CE_ItemViewItem,opt,painter,opt.widget)
+        selected=bool(opt.state & W.QStyle.State_Selected)
         painter.save()
-        font = opt.font
-        font.setBold(True)
-        painter.setFont(font)
-        intensity = int(20*(1+math.sin(self.phase*math.pi/8)))
-        painter.setPen(QtGui.QColor(20, 80+intensity, 185+intensity))
-        rect = opt.rect.adjusted(5,0,-5,0)
-        painter.drawText(rect, QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
-                         QtGui.QFontMetrics(font).elidedText(text, QtCore.Qt.ElideMiddle, rect.width()))
+        if selected and state=='Feldolgozás':
+            painter.fillRect(opt.rect,QtGui.QColor('#b8dcff'))
+        icon('pdf').paint(painter,QtCore.QRect(opt.rect.x()+5,opt.rect.y()+9,18,18))
+        state_width=min(166,max(125,opt.rect.width()//2))
+        split=opt.rect.right()-state_width
+        painter.setPen(QtCore.Qt.white if selected and state!='Feldolgozás' else QtGui.QColor('#18354e'))
+        painter.setFont(opt.font)
+        filename=QtGui.QFontMetrics(opt.font).elidedText(Path(path).name,QtCore.Qt.ElideMiddle,max(20,split-opt.rect.x()-30))
+        painter.drawText(QtCore.QRect(opt.rect.x()+29,opt.rect.y(),max(20,split-opt.rect.x()-30),opt.rect.height()),QtCore.Qt.AlignVCenter,filename)
+        state_icon=icon(STATE_ICONS.get(state,'unknown'))
+        if state=='Feldolgozás':
+            painter.save();painter.translate(split+9,opt.rect.center().y());painter.rotate(self.phase*22.5)
+            state_icon.paint(painter,QtCore.QRect(-8,-8,16,16));painter.restore()
+        else:state_icon.paint(painter,QtCore.QRect(split,opt.rect.y()+10,16,16))
+        font=QtGui.QFont(opt.font);font.setBold(state=='Feldolgozás');painter.setFont(font)
+        if state=='Feldolgozás':
+            intensity=int(18*(1+math.sin(self.phase*math.pi/8)))
+            painter.setPen(QtGui.QColor(0,55+intensity,175+intensity))
+        elif not selected:
+            painter.setPen(QtGui.QColor('#247237' if state in ('Felismerve','Kész') else '#4a586a'))
+        text=QtGui.QFontMetrics(font).elidedText(state,QtCore.Qt.ElideRight,state_width-22)
+        painter.drawText(QtCore.QRect(split+22,opt.rect.y(),state_width-22,opt.rect.height()),QtCore.Qt.AlignVCenter,text)
         painter.restore()
 
 
@@ -137,6 +152,7 @@ class SettingsDialog(W.QDialog):
 
 
 class Preview(W.QWidget):
+    changed = QtCore.pyqtSignal()
     rotation_save = QtCore.pyqtSignal(object)
 
     def __init__(self):
@@ -148,24 +164,31 @@ class Preview(W.QWidget):
         self.index = 0
         self.scale = 1.0
         self.fit = True
-        layout = W.QVBoxLayout(self)
+        outer = W.QVBoxLayout(self)
+        outer.setContentsMargins(0,0,0,0)
+        panel = CrystalPanel('PDF-betekintő')
+        outer.addWidget(panel)
+        layout = W.QVBoxLayout(panel)
         navigation = W.QToolBar()
-        navigation.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-        for label, action in [('◀',lambda:self.turn(-1)),('▶',lambda:self.turn(1)),
-                              ('−',lambda:self.zoom(.8)),('+',lambda:self.zoom(1.25)),
-                              ('Oldalszélesség',self.fit_width)]:
-            navigation.addAction(label,action)
+        navigation.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
+        navigation.setIconSize(QtCore.QSize(24,24))
+        for key,label,callback in [('previous','Előző oldal',lambda:self.turn(-1)),('next','Következő oldal',lambda:self.turn(1)),
+                                   ('zoom_out','Kicsinyítés',lambda:self.zoom(.8)),('zoom_in','Nagyítás',lambda:self.zoom(1.25)),
+                                   ('fit','Oldalszélesség',self.fit_width)]:
+            action=navigation.addAction(icon(key),label,callback);action.setToolTip(label)
         self.counter = W.QLabel('0 / 0')
         navigation.addWidget(self.counter)
         layout.addWidget(navigation)
         rotation_bar = W.QToolBar()
-        rotation_bar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-        for label,action in [('Forgatás balra',lambda:self.rotate(-90)),
-                             ('Forgatás jobbra',lambda:self.rotate(90)),
-                             ('Forgatás mentése',lambda:self.rotation_save.emit(self))]:
-            action_item = rotation_bar.addAction(label,action)
-            if label == 'Forgatás mentése':
-                self.rotation_save_action = action_item
+        rotation_bar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        rotation_bar.setIconSize(QtCore.QSize(24,24))
+        for key,label,callback in [('rotate_left','Forgatás\nbalra',lambda:self.rotate(-90)),
+                                   ('rotate_right','Forgatás\njobbra',lambda:self.rotate(90)),
+                                   ('save_rotation','Forgatás\nmentése',lambda:self.rotation_save.emit(self))]:
+            action_item=rotation_bar.addAction(icon(key),label,callback)
+            action_item.setToolTip(label.replace('\n',' '))
+            if key=='save_rotation':
+                self.rotation_save_action=action_item
                 self.rotation_save_action.setEnabled(False)
         layout.addWidget(rotation_bar)
         self.scroll = W.QScrollArea()
@@ -197,6 +220,7 @@ class Preview(W.QWidget):
         self.counter.setText('0 / 0')
         self.index = 0
         self.state = {'auto': {}, 'manual': {}}
+        self.changed.emit()
 
     def open(self, path, state=None):
         self.clear()
@@ -256,6 +280,7 @@ class Preview(W.QWidget):
             self.label.setPixmap(QtGui.QPixmap.fromImage(qimage))
             self.label.resize(image.width,image.height)
             self.counter.setText(f'{self.index+1} / {len(self.document)}')
+            self.changed.emit()
         except Exception as error:
             self.label.setText(str(error))
 
@@ -278,6 +303,8 @@ class Window(W.QMainWindow):
 
     def __init__(self, data_dir=None):
         super().__init__()
+        apply_theme(W.QApplication.instance())
+        self.setWindowIcon(application_icon())
         root = Path(data_dir) if data_dir else Path(QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.AppLocalDataLocation))
         root.mkdir(parents=True, exist_ok=True)
         self.store = Store(root / 'contracts.sqlite3')
@@ -290,18 +317,18 @@ class Window(W.QMainWindow):
         self.item_serial = 0
         self.loading = False
         self.rotation_states = {}
-        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.1.3')
+        self.setWindowTitle('Otthonápolási szerződéskezelő – v0.2.0')
         self.resize(1500, 900)
         self.setAcceptDrops(True)
-        self.setStyleSheet('QGroupBox {font-weight:bold; margin-top:18px; border:1px solid #b4c8dd; border-radius:4px;} QGroupBox::title {subcontrol-origin:margin; background:#d5e5f6; padding:5px;} QPushButton {padding:6px;} QLineEdit,QComboBox {padding:4px;} QTabBar::tab:selected {font-weight:bold; background:#e6f0fb;}')
         self.tabs = W.QTabWidget()
         self.tabs.setElideMode(QtCore.Qt.ElideNone)
         self.tabs.tabBar().setExpanding(False)
         self.tabs.setUsesScrollButtons(True)
-        self.tabs.setStyleSheet('QTabBar::tab {padding:10px 18px; min-height:24px;}')
         self.setCentralWidget(self.tabs)
+        self.create_actions()
         self.scan_page()
         self.browse_page()
+        self.setup_chrome()
         self.native_drops = None
         self.native_drop_error = ''
         self.ole_files.connect(self.receive_ole_files, QtCore.Qt.QueuedConnection)
@@ -319,9 +346,6 @@ class Window(W.QMainWindow):
         else:
             self.setAcceptDrops(True)
         self.tabs.currentChanged.connect(self.view_changed)
-        menu = self.menuBar().addMenu('Beállítások')
-        menu.addAction('Beállítások…', self.show_settings)
-        menu.addAction('Szolgáltatói törzsadatok…', self.edit_providers)
         self.statusBar().showMessage('Kész – minden feldolgozás helyben történik')
         self.apply_settings()
         self.tabs.setCurrentIndex(int(self.store.setting('view', '0')))
@@ -336,32 +360,136 @@ class Window(W.QMainWindow):
         if not self.folder.text():
             QtCore.QTimer.singleShot(200, self.show_settings)
 
-    def button(self, text, action, layout):
-        button = W.QPushButton(text)
-        button.clicked.connect(action)
+    def create_actions(self):
+        self.actions={}
+        self.action_buttons={}
+        definitions=[
+            ('add','Hozzáadás','add','add_dialog','Ctrl+O'),
+            ('remove','Törlés','remove','remove_current','Delete'),
+            ('clear','Lista ürítése','clear','clear_queue',''),
+            ('retry','Felismerés\nújra','retry','rerun','Ctrl+R'),
+            ('skip','Kihagyás','skip','next_item',''),
+            ('save','Mentés és\nkövetkező','save','save','Ctrl+S'),
+            ('pdf','PDF megnyitása','pdf','open_external',''),
+            ('browse','Szerződések\ntallózása','browse','show_browse',''),
+            ('settings','Beállítások','settings','show_settings',''),
+            ('help','Súgó / Névjegy','help','show_about','F1'),
+            ('refresh','Frissítés','refresh','refresh','F5'),
+            ('reset_filter','Szűrés törlése','reset_filter','reset_filter',''),
+            ('folder','Mappa megnyitása','folder','open_folder',''),
+            ('mark','Állapot mentése','ready','mark',''),
+            ('mark_uploaded','Megjelölés feltöltöttként','ready','mark_uploaded',''),
+            ('providers','Szolgáltatói törzsadatok','document','edit_providers',''),
+        ]
+        for key,label,art,method,shortcut in definitions:
+            action=W.QAction(icon(art),label,self)
+            action.setToolTip(label.replace('\n',' '))
+            action.setStatusTip(label.replace('\n',' '))
+            action.triggered.connect(lambda checked=False,method=method:getattr(self,method)())
+            if shortcut:action.setShortcut(shortcut)
+            action.setEnabled(key in ('add','browse','settings','help','providers'))
+            self.actions[key]=action
+        self.button_actions={method:key for key,_,_,method,_ in definitions}
+
+    def setup_chrome(self):
+        menus=[('Fájl',['add','pdf','folder']),('Feldolgozás',['remove','clear','retry','skip','save']),
+               ('Szerződések',['browse','refresh','reset_filter','mark_uploaded']),
+               ('Nézet',['browse']),('Eszközök',['settings','providers']),('Súgó',['help'])]
+        for title,keys in menus:
+            menu=self.menuBar().addMenu(title)
+            for key in keys:menu.addAction(self.actions[key])
+        self.main_toolbar=W.QToolBar('Fő műveletek',self)
+        self.main_toolbar.setObjectName('mainToolbar')
+        self.main_toolbar.setMovable(False);self.main_toolbar.setFloatable(False)
+        self.main_toolbar.setIconSize(QtCore.QSize(32,32))
+        self.main_toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        self.addToolBar(self.main_toolbar)
+        for key in ['add','remove','clear',None,'retry','skip','save',None,'pdf','browse',None,'settings','help']:
+            if key is None:self.main_toolbar.addSeparator()
+            else:self.main_toolbar.addAction(self.actions[key])
+        self.setStatusBar(CrystalStatusBar(self))
+        self.update_actions()
+
+    def show_browse(self):
+        self.tabs.setCurrentIndex(1)
+
+    def mark_uploaded(self):
+        self.mark_path(self.selected_path(),'Feltöltve')
+
+    def show_about(self):
+        W.QMessageBox.about(self,'Otthonápolási szerződéskezelő – Névjegy',
+            'Otthonápolási szerződéskezelő v0.2.0\n\n'
+            'Helyi, offline OCR és PDF-kezelés. A program nem tölt fel az ePénzbe.\n'
+            'Dokumentumok: PDF, mentett MSG/EML és klasszikus Outlook behúzás.\n'
+            'Állapotot a szerződéslistában jobb kattintással is módosíthatsz.\n\n'
+            'Ikonok: Crystal Clear – Everaldo Coelho; PDF: KDE Crystal SVG – KDE Artists.\n'
+            'Licencek és ikon-hozzárendelések: THIRD_PARTY_LICENSES.md, assets/licenses.\n'
+            'Windows 10 1607 célgépes teszt: még nem igazolt.')
+
+    def update_actions(self):
+        if not hasattr(self,'table') or not hasattr(self,'actions'):
+            return
+        scan=self.tabs.currentIndex()==0
+        entry=self.items.get(self.current)
+        selected=self.selected_path() if not scan else self.current
+        enabled={'add':scan,'remove':scan and bool(entry),'clear':scan and bool(self.items),
+                 'retry':scan and bool(entry) and entry['state']!='Feldolgozás',
+                 'skip':scan and bool(self.items),
+                 'save':scan and bool(entry) and entry['state'] not in ('Várakozik','Feldolgozás'),
+                 'pdf':bool(selected),'browse':True,'settings':True,'help':True,'providers':True,
+                 'refresh':not scan,'reset_filter':not scan,'folder':not scan and bool(selected),
+                 'mark':not scan and bool(selected),'mark_uploaded':not scan and bool(selected)}
+        for key,value in enabled.items():self.actions[key].setEnabled(bool(value))
+        if isinstance(self.statusBar(),CrystalStatusBar):
+            if scan:
+                page=self.scan_preview
+                text=f'Dokumentum: {self.queue.currentRow()+1 if entry else 0} / {self.queue.count()}  |  Oldal: {page.index+1 if page.document else 0} / {len(page.document) if page.document else 0}'
+                state=entry['state'] if entry else 'Kész'
+            else:
+                text=Path(selected).name if selected else ''
+                state=self.store.status(selected)[0] if selected else 'Kész'
+            self.statusBar().set_info(text)
+            self.statusBar().state_icon=STATE_ICONS.get(state,'ready')
+            self.statusBar().update()
+
+    def button(self,text,callback,layout):
+        button=W.QPushButton(text)
+        button.setIconSize(QtCore.QSize(24,24))
+        key=self.button_actions.get(callback.__name__)
+        if key:
+            action=self.actions[key]
+            button.setProperty('actionKey',key)
+            def sync():
+                button.setIcon(action.icon());button.setEnabled(action.isEnabled());button.setToolTip(action.toolTip())
+            action.changed.connect(sync);sync()
+            button.clicked.connect(action.trigger)
+        else:button.clicked.connect(callback)
         layout.addWidget(button)
         return button
 
-    def panel(self, title):
-        box = W.QGroupBox(title)
-        layout = W.QVBoxLayout(box)
-        box.ensurePolished()
-        title_font = QtGui.QFont(box.font())
-        title_font.setBold(True)
-        box.setMinimumWidth(QtGui.QFontMetrics(title_font).horizontalAdvance(title)+40)
-        return box, layout
+    def panel(self,title):
+        box=CrystalPanel(title)
+        return box,W.QVBoxLayout(box)
 
     def scan_page(self):
         self.scan_split = W.QSplitter()
-        self.tabs.addTab(self.scan_split, 'Szkennelések feldolgozása')
+        self.tabs.addTab(self.scan_split,icon('pdf'),'Szkennelések feldolgozása')
+        self.tabs.setIconSize(QtCore.QSize(24,24))
         box, layout = self.panel('Beérkezett dokumentumok')
         self.inbox = box
         instruction = W.QLabel('Húzz ide PDF-, MSG- vagy EML-fájlokat\nEgyszerre több dokumentum is hozzáadható.')
         instruction.setWordWrap(True)
+        instruction.setToolTip(instruction.text())
         layout.addWidget(instruction)
+        header=W.QFrame();header.setObjectName('queueHeader')
+        headings=W.QHBoxLayout(header);headings.setContentsMargins(5,1,5,1)
+        headings.addWidget(W.QLabel('Fájlnév'),1)
+        state_heading=W.QLabel('Állapot');state_heading.setFixedWidth(154)
+        headings.addWidget(state_heading);layout.addWidget(header)
         self.queue = W.QListWidget()
         self.queue_delegate = QueueDelegate(self.queue)
         self.queue.setItemDelegate(self.queue_delegate)
+        self.queue.setAlternatingRowColors(True)
         self.pulse = QtCore.QTimer(self)
         self.pulse.setInterval(180)
         self.pulse.timeout.connect(self.animate_processing)
@@ -386,8 +514,10 @@ class Window(W.QMainWindow):
             self.fields[key] = edit
             form.addRow(title, edit)
         self.filename = W.QLineEdit()
+        self.filename.setObjectName("proposedFilename")
         form.addRow('Javasolt fájlnév', self.filename)
         self.folder = PathLabel()
+        self.folder.setObjectName("targetPath")
         form.addRow('Mentési mappa', self.folder)
         layout.addLayout(form)
         self.warning = W.QLabel()
@@ -405,20 +535,24 @@ class Window(W.QMainWindow):
         layout.addLayout(bar)
         self.save_button = self.button('Mentés és következő',self.save,layout)
         self.save_button.setEnabled(False)
+        self.save_button.setObjectName("primarySave")
         self.scan_split.addWidget(box)
         self.scan_preview = Preview()
         self.scan_preview.rotation_save.connect(self.save_rotation)
+        self.scan_preview.changed.connect(self.update_actions)
         self.scan_split.addWidget(self.scan_preview)
         self.scan_split.setSizes([350, 450, 650])
 
     def browse_page(self):
         self.browse_split = W.QSplitter()
-        self.tabs.addTab(self.browse_split, 'Szerződések tallózása')
-        box, layout = self.panel('Szűrők és csoportosítás')
+        self.tabs.addTab(self.browse_split,icon('browse'),'Szerződések tallózása')
+        box, layout = self.panel('Szűrés és csoportosítás')
         self.search = W.QLineEdit()
         self.search.setPlaceholderText('NEAK-kód, szolgáltató, fájlnév…')
         self.search.textChanged.connect(self.filter_rows)
+        layout.addWidget(W.QLabel('Keresett szöveg:'))
         layout.addWidget(self.search)
+        layout.addWidget(W.QLabel('Év:'))
         self.year_filter = W.QComboBox()
         self.year_filter.setToolTip('Hatályosság kezdőéve a fájlnév alapján')
         self.year_filter.currentIndexChanged.connect(self.filter_rows)
@@ -428,52 +562,75 @@ class Window(W.QMainWindow):
         self.year_timer.setInterval(60000)
         self.year_timer.timeout.connect(self.refresh_years)
         self.year_timer.start()
+        layout.addWidget(W.QLabel('Melléklet:'))
         self.annex_filter = W.QComboBox()
         self.annex_filter.addItems(['Összes melléklet', 'IX-1', 'IX-2', 'IX-3'])
         self.annex_filter.currentIndexChanged.connect(self.filter_rows)
         layout.addWidget(self.annex_filter)
+        layout.addWidget(W.QLabel('ePénz-állapot:'))
         self.status_filter = W.QComboBox()
         self.status_filter.addItems(['Összes állapot'] + list(STATUSES))
         self.status_filter.currentIndexChanged.connect(self.filter_rows)
         layout.addWidget(self.status_filter)
+        layout.addStretch()
         self.button('Frissítés', self.refresh, layout)
         self.button('Szűrés törlése', self.reset_filter, layout)
-        layout.addStretch()
         self.browse_split.addWidget(box)
         middle = W.QSplitter(QtCore.Qt.Vertical)
         box, layout = self.panel('Szerződések listája')
         self.table = W.QTableWidget(0, 6)
+        self.table.setHorizontalHeader(CrystalHeader(self.table))
         self.table.horizontalHeader().setToolTip('A fejléc kattintásával rendezhető.')
         self.table.setHorizontalHeaderLabels(['Fájlnév', 'NEAK-kód', 'Szolgáltató', 'Melléklet', 'Hatályosság kezdete', 'ePénz'])
+        self.table.setAlternatingRowColors(True)
+        self.table.setIconSize(QtCore.QSize(16,16))
         self.table.setSelectionBehavior(W.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(W.QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(W.QAbstractItemView.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self.select_contract)
         self.table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.show_status_menu)
-        self.table.horizontalHeader().setSectionResizeMode(W.QHeaderView.ResizeToContents)
+        header=self.table.horizontalHeader()
+        header.setMinimumSectionSize(65)
+        header.setSectionResizeMode(0,W.QHeaderView.Stretch)
+        for column,width in [(1,84),(2,122),(3,80),(4,115),(5,140)]:
+            header.setSectionResizeMode(column,W.QHeaderView.Interactive)
+            header.resizeSection(column,width)
         layout.addWidget(self.table)
         middle.addWidget(box)
         box, layout = self.panel('Kijelölt szerződés')
-        self.details = W.QLabel('Válassz szerződést')
-        self.details.setWordWrap(True)
-        layout.addWidget(self.details)
-        self.upload_state = W.QComboBox()
-        self.upload_state.addItems(STATUSES)
-        layout.addWidget(self.upload_state)
-        self.button('Állapot mentése a kijelölt dokumentumhoz', self.mark, layout)
-        self.button('PDF megnyitása', self.open_external, layout)
-        self.button('Mappa megnyitása', self.open_folder, layout)
+        body=W.QHBoxLayout()
+        form=W.QFormLayout()
+        self.contract_details={}
+        for key,label in [('path','Fájl elérési útja:'),('code','NEAK-kód:'),('provider','Szolgáltató:'),
+                           ('annex','Melléklet:'),('date','Hatályosság kezdete:')]:
+            field=W.QLineEdit();field.setReadOnly(True)
+            self.contract_details[key]=field;form.addRow(label,field)
+        self.details=W.QLabel('Válassz szerződést');self.details.setWordWrap(True)
+        form.addRow(self.details)
+        self.upload_state=W.QComboBox();self.upload_state.addItems(STATUSES)
+        form.addRow('Állapot beállítása:',self.upload_state)
+        body.addLayout(form,1)
+        operations=W.QVBoxLayout()
+        hint=W.QLabel('Jobb kattintás:\nállapot módosítása');hint.setWordWrap(True);operations.addWidget(hint)
+        self.button('Megjelölés feltöltöttként',self.mark_uploaded,operations)
+        self.button('Állapot mentése',self.mark,operations)
+        self.button('PDF megnyitása',self.open_external,operations)
+        self.button('Mappa megnyitása',self.open_folder,operations)
+        operations.addStretch();body.addLayout(operations)
+        layout.addLayout(body)
         middle.addWidget(box)
         self.browse_split.addWidget(middle)
         self.browse_preview = Preview()
         self.browse_preview.rotation_save.connect(self.save_rotation)
+        self.browse_preview.changed.connect(self.update_actions)
         self.browse_split.addWidget(self.browse_preview)
-        self.browse_split.setSizes([220, 650, 650])
+        self.browse_split.setSizes([240, 800, 640])
 
     def view_changed(self, index):
         if index == 1:
             self.refresh()
+        self.update_actions()
 
     def error(self, error):
         W.QMessageBox.warning(self, 'Ellenőrizendő', str(error))
@@ -590,7 +747,7 @@ class Window(W.QMainWindow):
                 for path in paths:
                     if str(path) in self.items:
                         continue
-                    item = W.QListWidgetItem(path.name + ' — Várakozik')
+                    item = W.QListWidgetItem(icon('pdf'),path.name + ' — Várakozik')
                     item.setData(QtCore.Qt.UserRole, str(path))
                     self.queue.addItem(item)
                     self.item_serial += 1
@@ -630,6 +787,7 @@ class Window(W.QMainWindow):
         entry['item'].setData(QtCore.Qt.UserRole+1,state)
         entry['item'].setToolTip(Path(path).name+' — '+state)
         self.update_save_enabled()
+        self.show_scan_state()
 
     def animate_processing(self):
         active = [entry for entry in self.items.values() if entry['state']=='Feldolgozás']
@@ -663,6 +821,7 @@ class Window(W.QMainWindow):
         if self.current == path:
             self.load_fields(data)
             self.scan_preview.render()
+        self.update_actions()
 
     def select_queue(self, item, previous):
         self.stash_fields()
@@ -673,6 +832,7 @@ class Window(W.QMainWindow):
         else:
             self.reset_scan_details()
         self.update_save_enabled()
+        self.show_scan_state()
 
     def contract_fields(self):
         values = {key: edit.currentText() if isinstance(edit, W.QComboBox) else edit.text().strip()
@@ -724,10 +884,18 @@ class Window(W.QMainWindow):
             self.items.pop(path, None)
             del item
 
+    def show_scan_state(self):
+        if self.tabs.currentIndex()!=0 or self.current not in self.items:return
+        state=self.items[self.current]['state']
+        messages={'Várakozik':'Feldolgozásra vár','Feldolgozás':'Feldolgozás…',
+                  'Felismerve':'Feldolgozás kész – készen áll a mentésre',
+                  'Ellenőrizendő':'A felismert adatok ellenőrzést igényelnek',
+                  'Feldolgozási hiba':'Feldolgozási hiba – az adatok kézzel javíthatók',
+                  'Kész':'A másolat mentve'}
+        self.statusBar().showMessage(messages.get(state,state))
+
     def update_save_enabled(self):
-        if hasattr(self,'save_button'):
-            entry = self.items.get(self.current)
-            self.save_button.setEnabled(bool(entry and entry['state'] not in ('Várakozik','Feldolgozás')))
+        self.update_actions()
 
     def reset_scan_details(self):
         self.load_fields(Contract())
@@ -828,11 +996,18 @@ class Window(W.QMainWindow):
                 values = [path.name, data.code, data.provider, data.annex, data.date, self.store.status(path)[0]]
                 for col, value in enumerate(values):
                     cell = DateItem(data.date) if col==4 else W.QTableWidgetItem(value)
+                    if col==0:cell.setIcon(icon('pdf'))
+                    if col==5:cell.setIcon(icon(STATE_ICONS.get(value,'unknown')))
+                    cell.setToolTip(str(path) if col==0 else value)
                     cell.setData(QtCore.Qt.UserRole, str(path))
                     self.table.setItem(row, col, cell)
             self.table.setSortingEnabled(True)
             self.filter_rows()
-            self.statusBar().showMessage(f'{self.table.rowCount()} szerződés')
+            if self.tabs.currentIndex()==1:
+                self.statusBar().showMessage(f'{self.table.rowCount()} szerződés')
+            elif not self.items:
+                self.statusBar().showMessage('Kész – dokumentumok hozzáadására vár')
+            self.update_actions()
         except Exception as error:
             self.error(error)
 
@@ -873,12 +1048,22 @@ class Window(W.QMainWindow):
         return self.table.item(row, 0).data(QtCore.Qt.UserRole) if row >= 0 else None
 
     def select_contract(self):
-        path = self.selected_path()
+        path=self.selected_path()
         if path:
-            status, timestamp = self.store.status(path)
-            self.details.setText(path + '\nÁllapot: ' + status + ('\nFeltöltve: ' + timestamp if timestamp else ''))
+            status,timestamp=self.store.status(path)
+            try:data=parse_filename(Path(path).name)
+            except ValueError:data=Contract()
+            values={'path':path,'code':data.code,'provider':data.provider,'annex':data.annex,
+                    'date':QtCore.QDate.fromString(data.date,'yyyyMMdd').toString('yyyy.MM.dd.')}
+            for key,value in values.items():
+                self.contract_details[key].setText(value);self.contract_details[key].setToolTip(value)
+            self.details.setText('ePénz: '+status+('\nFeltöltve: '+timestamp if timestamp else ''))
             self.upload_state.setCurrentText(status)
             self.browse_preview.open(path,self.rotation_state(path))
+        else:
+            for field in self.contract_details.values():field.clear()
+            self.details.setText('Válassz szerződést')
+        self.update_actions()
 
     def show_status_menu(self, position):
         index = self.table.indexAt(position)
@@ -892,7 +1077,7 @@ class Window(W.QMainWindow):
         for label,status in [('Megjelölés feltöltöttként','Feltöltve'),
                              ('Nincs feltöltve','Nincs feltöltve'),
                              ('Ellenőrizendő','Ellenőrizendő'),('Ismeretlen','Ismeretlen')]:
-            action = menu.addAction(label)
+            action = menu.addAction(icon(STATE_ICONS[status]),label)
             action.triggered.connect(lambda checked=False,path=path,status=status:self.mark_path(path,status))
         try:
             menu.exec_(self.table.viewport().mapToGlobal(position))
@@ -910,6 +1095,7 @@ class Window(W.QMainWindow):
                 for row in range(self.table.rowCount()):
                     if self.table.item(row,0).data(QtCore.Qt.UserRole)==path:
                         self.table.item(row,5).setText(status)
+                        self.table.item(row,5).setIcon(icon(STATE_ICONS[status]))
                         break
             finally:
                 self.table.setSortingEnabled(sorting)
@@ -923,7 +1109,7 @@ class Window(W.QMainWindow):
         self.mark_path(self.selected_path(),self.upload_state.currentText())
 
     def open_external(self):
-        path = self.selected_path()
+        path = self.current if self.tabs.currentIndex()==0 else self.selected_path()
         if path:
             QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
 
@@ -954,11 +1140,16 @@ class Window(W.QMainWindow):
 
 
 def main():
-    app = W.QApplication(sys.argv)
+    W.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling,True)
+    W.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps,True)
+    if os.name=='nt':
+        import ctypes
+        shell=ctypes.WinDLL('shell32')
+        shell.SetCurrentProcessExplicitAppUserModelID.argtypes=[ctypes.c_wchar_p]
+        shell.SetCurrentProcessExplicitAppUserModelID('NEAK.OtthonapolasiSzerzodeskezelo')
+    app=W.QApplication(sys.argv)
     app.setOrganizationName('NEAKSzerzodesRendezo')
     app.setApplicationName('OtthonapolasiSzerzodeskezelo')
-    app.setStyle('Fusion')
-    app.setStyleSheet('QGroupBox {font-weight:bold; margin-top:12px;} QGroupBox::title {subcontrol-origin:margin;} QPushButton {padding:7px;} QLineEdit,QComboBox {padding:5px;}')
-    window = Window()
-    window.showMaximized()
+    apply_theme(app)
+    window=Window();window.showMaximized()
     sys.exit(app.exec_())
