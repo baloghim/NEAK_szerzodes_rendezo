@@ -130,6 +130,7 @@ class Window(W.QMainWindow):
         self.scan_page()
         self.browse_page()
         self.native_drops = None
+        self.native_drop_error = ''
         self.ole_files.connect(self.receive_ole_files, QtCore.Qt.QueuedConnection)
         if os.name == 'nt' and W.QApplication.platformName() == 'windows':
             from .windows_drop import NativeDrops
@@ -137,6 +138,7 @@ class Window(W.QMainWindow):
                 self.native_drops = NativeDrops([self.inbox, self.queue.viewport()],
                                                 self.staging.name, self.ole_files.emit)
             except Exception as error:
+                self.native_drop_error = str(error)
                 self.setAcceptDrops(True)
                 message = ('Az Outlook-behúzás nem inicializálható. Az Outlookot és ezt a programot '
                            'is normál jogosultsággal indítsd. Részletek: ' + str(error))

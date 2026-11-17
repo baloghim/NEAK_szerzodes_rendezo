@@ -283,7 +283,10 @@ class Receiver:
                     api.release_medium(medium)
             except Exception as error:
                 if path is not None:
-                    path.unlink(missing_ok=True)
+                    try:
+                        path.unlink(missing_ok=True)
+                    except OSError:
+                        pass  # Staging cleanup is retried on normal application exit.
                 errors.append(f'{entry.name}: {error}')
         if not paths and not errors:
             errors.append('A behúzott elemek között nincs PDF-, MSG- vagy EML-dokumentum.')

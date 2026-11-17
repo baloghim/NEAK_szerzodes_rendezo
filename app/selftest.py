@@ -29,6 +29,8 @@ def run():
         store.set_setting('folder', str(root))
         store.db.close()
         window = Window(settings)
+        if os.name == 'nt':
+            assert window.native_drops is not None, window.native_drop_error
         def fail(message):
             raise RuntimeError(str(message))
         window.error = fail
