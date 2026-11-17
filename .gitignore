@@ -1,0 +1,13 @@
+__pycache__/
+.pytest_cache/
+.venv/
+build/
+dist/
+*.spec
+*.sqlite*
+*.db
+*.pdf
+*.msg
+*.eml
+private/
+*.log
