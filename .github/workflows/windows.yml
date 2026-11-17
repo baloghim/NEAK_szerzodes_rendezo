@@ -4,27 +4,76 @@ on:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: write
+  actions: write
 jobs:
   windows:
     runs-on: windows-2022
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Stop superseded builds from this workflow
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $runs = gh run list --workflow windows.yml --branch main --limit 30 --json databaseId,status | ConvertFrom-Json
+          foreach ($run in $runs) {
+            if ([long]$run.databaseId -lt [long]$env:GITHUB_RUN_ID -and $run.status -in @('in_progress','queued')) {
+              gh run cancel $run.databaseId
+            }
+          }
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10.11'
           architecture: x64
           cache: pip
-      - name: Build, test and run packaged EXE
+      - name: Install dependencies and run tests
         shell: pwsh
         run: |
           try {
-            ./scripts/build-windows.ps1 *>&1 | Tee-Object -FilePath build.log
+            ./scripts/build-windows.ps1 -Stage dependencies *>&1 | Tee-Object -FilePath build-dependencies.log
           } catch {
-            $details = ((Get-Content build.log -Tail 30 -ErrorAction SilentlyContinue) -join "`n") + "`n" + $_.ToString()
+            $details = ((Get-Content build-dependencies.log -Tail 30 -ErrorAction SilentlyContinue) -join "`n") + "`n" + $_.ToString()
             $escaped = $details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-            Write-Output "::error title=Windows build diagnostics::$escaped"
+            Write-Output "::error title=Windows dependencies diagnostics::$escaped"
+            throw
+          }
+      - name: Prepare verified offline OCR
+        shell: pwsh
+        run: |
+          try {
+            ./scripts/build-windows.ps1 -Stage ocr *>&1 | Tee-Object -FilePath build-ocr.log
+          } catch {
+            $details = ((Get-Content build-ocr.log -Tail 30 -ErrorAction SilentlyContinue) -join "`n") + "`n" + $_.ToString()
+            $escaped = $details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows ocr diagnostics::$escaped"
+            throw
+          }
+      - name: Build Windows executable
+        shell: pwsh
+        run: |
+          try {
+            ./scripts/build-windows.ps1 -Stage package *>&1 | Tee-Object -FilePath build-package.log
+          } catch {
+            $details = ((Get-Content build-package.log -Tail 30 -ErrorAction SilentlyContinue) -join "`n") + "`n" + $_.ToString()
+            $escaped = $details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows package diagnostics::$escaped"
+            throw
+          }
+      - name: Check packaged executable and create ZIP
+        shell: pwsh
+        run: |
+          try {
+            ./scripts/build-windows.ps1 -Stage verify *>&1 | Tee-Object -FilePath build-verify.log
+          } catch {
+            $details = ((Get-Content build-verify.log -Tail 30 -ErrorAction SilentlyContinue) -join "`n") + "`n" + $_.ToString()
+            $escaped = $details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows verify diagnostics::$escaped"
             throw
           }
       - uses: actions/upload-artifact@v4
