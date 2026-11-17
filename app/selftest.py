@@ -60,9 +60,8 @@ def run():
             from .ole_smoke import run_native_cases
             assert window.native_drops is not None, 'Native HWND drop targets not registered'
             assert len(window.native_drops.handles) == 2
-            extra = run_native_cases(window.staging.name, source.read_bytes())
             previous = window.queue.count()
-            window.ole_files.emit(extra, [])
+            extra = run_native_cases(window.staging.name, source.read_bytes(), window.native_drops.targets[0])
             deadline = time.monotonic() + 120
             while time.monotonic() < deadline:
                 app.processEvents()

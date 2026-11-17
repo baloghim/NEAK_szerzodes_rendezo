@@ -49,15 +49,15 @@ def make_message(api, path, pdf):
             method(named,2,ULONG)(named)
         write_stream(root, '__properties_version1.0',
                      b'\0'*8 + struct.pack('<IIII',0,1,0,1) + b'\0'*8 + prop(0x340D0003,0x40000))
-        write_stream(root, '__substg1.0_001A001F', 'IPM.Note\0'.encode('utf-16-le'))
-        write_stream(root, '__substg1.0_0037001F', 'Synthetic message\0'.encode('utf-16-le'))
+        write_stream(root, '__substg1.0_001A001F', 'IPM.Note'.encode('utf-16-le'))
+        write_stream(root, '__substg1.0_0037001F', 'Synthetic message'.encode('utf-16-le'))
         attachment = PTR()
         check(method(root, 5, HRESULT, C.c_wchar_p, DWORD, DWORD, DWORD, C.POINTER(PTR))(
             root, '__attach_version1.0_#00000000', 0x1012, 0, 0, C.byref(attachment)), 'Synthetic attachment')
         try:
-            name = 'szintetikus.pdf\0'.encode('utf-16-le')
+            name = 'szintetikus.pdf'.encode('utf-16-le')
             write_stream(attachment, '__properties_version1.0', b'\0'*8 +
-                         prop(0x37050003,1) + prop(0x3707001F,len(name)) + prop(0x37010102,len(pdf)))
+                         prop(0x37050003,1) + prop(0x3707001F,len(name)+2) + prop(0x37010102,len(pdf)))
             write_stream(attachment, '__substg1.0_3707001F', name)
             write_stream(attachment, '__substg1.0_37010102', pdf)
             check(method(attachment,9,HRESULT,DWORD)(attachment,0),'Synthetic attachment commit')
@@ -166,7 +166,7 @@ class SyntheticDataObject:
             return -2147467259
 
 
-def run_native_cases(staging, pdf):
+def run_native_cases(staging, pdf, registered_target=None):
     api=WinAPI()
     check(api.ole.OleInitialize(None),'Synthetic OLE initialization')
     try:
@@ -193,13 +193,21 @@ def run_native_cases(staging, pdf):
                 for title,entries,expected in cases:
                     incoming=SyntheticDataObject(api,entries)
                     delivered=[]
-                    target=DropTarget(Receiver(staging,api),lambda paths,errors: delivered.append((paths,errors)))
+                    target=registered_target or DropTarget(Receiver(staging,api),lambda paths,errors: None)
+                    original_delivery=target.deliver
+                    def record(paths,errors):
+                        delivered.append((paths,errors))
+                        original_delivery(paths,errors)
+                    target.deliver=record
                     effect=DWORD(3)
                     check(method(target.pointer,3,HRESULT,PTR,DWORD,POINTL,C.POINTER(DWORD))(
                         target.pointer,incoming.pointer,0,POINTL(),C.byref(effect)),title+' DragEnter')
                     assert effect.value==COPY,title
-                    check(method(target.pointer,6,HRESULT,PTR,DWORD,POINTL,C.POINTER(DWORD))(
-                        target.pointer,incoming.pointer,0,POINTL(),C.byref(effect)),title+' Drop')
+                    try:
+                        check(method(target.pointer,6,HRESULT,PTR,DWORD,POINTL,C.POINTER(DWORD))(
+                            target.pointer,incoming.pointer,0,POINTL(),C.byref(effect)),title+' Drop')
+                    finally:
+                        target.deliver=original_delivery
                     assert effect.value==COPY and len(delivered)==1,title
                     paths,errors=delivered[0]
                     assert not errors and not incoming.failures,(title,errors,incoming.failures)
